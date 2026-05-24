@@ -20,7 +20,7 @@ def run_migrations():
     with engine.begin() as conn:
 
         # ── 1. Schemas ────────────────────────────────────────
-        for schema in ("bronze", "silver", "gold"):
+        for schema in ("bronze", "silver", "gold", "audit"):
             conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
             log.info(f"Schema '{schema}' — OK")
 
@@ -45,9 +45,9 @@ def run_migrations():
         """))
         log.info("Table bronze.stg_annonces — OK")
 
-        # ── 3. Load-logs table ────────────────────────────────
+        # ── 3. Load-logs table (audit schema) ────────────────
         conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS bronze.load_logs (
+            CREATE TABLE IF NOT EXISTS audit.load_logs (
                 log_id        SERIAL PRIMARY KEY,
                 layer         VARCHAR(20),
                 table_name    VARCHAR(100),
@@ -57,7 +57,7 @@ def run_migrations():
                 logged_at     TIMESTAMP DEFAULT NOW()
             )
         """))
-        log.info("Table bronze.load_logs — OK")
+        log.info("Table audit.load_logs — OK")
 
     log.info("All migrations completed ✓")
     log.info("═" * 60)
