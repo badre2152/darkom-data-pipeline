@@ -27,31 +27,48 @@ def run_pipeline(csv_path: str):
 
     # ── 🔧 Migrations ─────────────────────────────────────────
     t0 = time.time()
-    run_migrations()
+    try:
+        run_migrations()
+    except Exception as exc:
+        log.error(f"🔧 Migrations FAILED: {exc}", exc_info=True)
+        sys.exit(1)
     log.info(f"🔧 Migrations done  [{time.time()-t0:.1f}s]")
 
     # ── 🥉 Bronze ─────────────────────────────────────────────
     t0 = time.time()
-    bronze_rows = load_staging(csv_path)
+    try:
+        bronze_rows = load_staging(csv_path)
+    except Exception as exc:
+        log.error(f"🥉 Bronze FAILED: {exc}", exc_info=True)
+        sys.exit(1)
     log.info(f"🥉 Bronze done  [{time.time()-t0:.1f}s]  rows={bronze_rows}")
 
     # ── 🥈 Silver ─────────────────────────────────────────────
     t0 = time.time()
-    silver_rows = clean_data()
+    try:
+        silver_rows = clean_data()
+    except Exception as exc:
+        log.error(f"🥈 Silver FAILED: {exc}", exc_info=True)
+        sys.exit(1)
     log.info(f"🥈 Silver done  [{time.time()-t0:.1f}s]  rows={silver_rows}")
 
     # ── 🥇 Gold ───────────────────────────────────────────────
     t0 = time.time()
-    gold_rows = build_warehouse()
+    try:
+        gold_rows = build_warehouse()
+    except Exception as exc:
+        log.error(f"🥇 Gold FAILED: {exc}", exc_info=True)
+        sys.exit(1)
     log.info(f"🥇 Gold done    [{time.time()-t0:.1f}s]  rows={gold_rows}")
 
     elapsed = time.time() - start
-    log.info("╔" + "═" * 58 + "╗")
-    log.info(f"║  ✅  Pipeline completed in {elapsed:.1f}s" + " " * (31 - len(f"{elapsed:.1f}")) + "║")
-    log.info(f"║  Bronze : {bronze_rows} rows" + " " * (47 - len(str(bronze_rows))) + "║")
-    log.info(f"║  Silver : {silver_rows} rows" + " " * (47 - len(str(silver_rows))) + "║")
-    log.info(f"║  Gold   : {gold_rows} rows" + " " * (47 - len(str(gold_rows))) + "║")
-    log.info("╚" + "═" * 58 + "╝")
+    W = 58  # inner width (between ╔ and ╗)
+    log.info("╔" + "═" * W + "╗")
+    log.info(f"║  {'✅  Pipeline completed in ' + f'{elapsed:.1f}s':<{W-2}}║")
+    log.info(f"║  {'Bronze : ' + str(bronze_rows) + ' rows':<{W-2}}║")
+    log.info(f"║  {'Silver : ' + str(silver_rows) + ' rows':<{W-2}}║")
+    log.info(f"║  {'Gold   : ' + str(gold_rows)   + ' rows':<{W-2}}║")
+    log.info("╚" + "═" * W + "╝")
 
 
 if __name__ == "__main__":

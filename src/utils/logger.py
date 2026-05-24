@@ -5,7 +5,7 @@ get_logger(name) → writes to its own log file AND pipeline.log
 
 import logging
 from pathlib import Path
-from src.config import LOGS_DIR, LOG_PIPELINE
+from src.config import LOGS_DIR, LOG_PIPELINE, LOG_DB, LOG_VALIDATE
 
 # Ensure logs directory exists
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
@@ -16,6 +16,8 @@ _LOG_MAP = {
     "bi_schema" : LOGS_DIR / "bi_schema.log",
     "migrations": LOGS_DIR / "migrations.log",
     "pipeline"  : LOG_PIPELINE,
+    "db"        : LOG_DB,
+    "validate"  : LOG_VALIDATE,
 }
 
 _FMT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
@@ -34,6 +36,8 @@ def get_logger(name: str) -> logging.Logger:
         return logger
 
     logger.setLevel(logging.DEBUG)
+    logger.propagate = False  # FIX: prevent log records bubbling to root logger
+    # (avoids duplicate console output when root logger also has handlers)
     formatter = logging.Formatter(_FMT, datefmt=_DATE_FMT)
 
     # ── Layer-specific file handler ──────────────────────────

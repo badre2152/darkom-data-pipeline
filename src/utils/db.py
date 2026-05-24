@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from src.utils.logger import get_logger
 
 load_dotenv()
-log = get_logger("pipeline")
+log = get_logger("db")
 
 
 def get_engine(schema: str = "public"):
@@ -31,7 +31,7 @@ def get_engine(schema: str = "public"):
         pool_pre_ping=True,
     )
 
-    log.debug(f"Engine created → schema={schema}  db={dbname}@{host}:{port}")
+    log.debug("Engine created → schema=%s  db=%s@%s:%s user=%s", schema, dbname, host, port, user)
     return engine
 
 

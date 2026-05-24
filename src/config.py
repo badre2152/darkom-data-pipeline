@@ -5,7 +5,8 @@ config.py — Project constants and paths
 from pathlib import Path
 
 # ─── Root ────────────────────────────────────────────────────
-ROOT_DIR = Path("/Users/mac/Desktop/jeury-brief")
+# Resolved relative to this file so the project runs on any machine.
+ROOT_DIR = Path(__file__).parent.parent
 
 # ─── Data paths ──────────────────────────────────────────────
 DATA_DIR          = ROOT_DIR / "data"
@@ -24,6 +25,8 @@ LOG_CLEAN         = LOGS_DIR / "clean.log"
 LOG_BI_SCHEMA     = LOGS_DIR / "bi_schema.log"
 LOG_PIPELINE      = LOGS_DIR / "pipeline.log"
 LOG_MIGRATIONS    = LOGS_DIR / "migrations.log"
+LOG_DB            = LOGS_DIR / "db.log"
+LOG_VALIDATE      = LOGS_DIR / "validate.log"
 
 # ─── Database schemas ────────────────────────────────────────
 SCHEMA_BRONZE     = "bronze"
