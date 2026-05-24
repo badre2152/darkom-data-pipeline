@@ -1,0 +1,78 @@
+// ============================================================
+// DAX MEASURES — Dashboard 2 : Analyse des Prix
+// Catégories prix : economique | moyen | haut_standing | luxe
+//   (issues des quantiles Q1/Q2/Q3 — Silver layer)
+// ============================================================
+
+// ── Prix moyen par ville
+Prix Moyen par Ville =
+CALCULATE(
+    AVERAGE(fact_annonces[prix]),
+    ALLEXCEPT(subdim_ville, subdim_ville[ville])
+)
+
+// ── Écart prix vs moyenne nationale
+Écart vs Marché =
+[Prix Moyen] - CALCULATE([Prix Moyen], ALL(subdim_ville[ville]))
+
+// ── Prix moyen par m² (hors anomalies)
+Prix Moyen m2 Propre =
+CALCULATE(
+    AVERAGE(fact_annonces[prix_par_m2]),
+    dim_anomalies[is_anomaly] = FALSE,
+    dim_anomalies[prix_par_m2_broken] = FALSE
+)
+
+// ── % annonces par catégorie de prix
+% Economique =
+DIVIDE(
+    CALCULATE([Total Annonces], dim_category[prix_category] = "economique"),
+    [Total Annonces]
+)
+
+% Moyen =
+DIVIDE(
+    CALCULATE([Total Annonces], dim_category[prix_category] = "moyen"),
+    [Total Annonces]
+)
+
+% Haut Standing =
+DIVIDE(
+    CALCULATE([Total Annonces], dim_category[prix_category] = "haut_standing"),
+    [Total Annonces]
+)
+
+% Luxe =
+DIVIDE(
+    CALCULATE([Total Annonces], dim_category[prix_category] = "luxe"),
+    [Total Annonces]
+)
+
+// ── Nb annonces luxe
+Total Luxe =
+CALCULATE(
+    [Total Annonces],
+    dim_category[luxury] = TRUE
+)
+
+// ── Prix moyen — Vente
+Prix Moyen Vente =
+CALCULATE([Prix Moyen], dim_transaction[transaction] = "vente")
+
+// ── Prix moyen — Location
+Prix Moyen Location =
+CALCULATE([Prix Moyen], dim_transaction[transaction] = "location")
+
+// ── Indice de cherté relatif ville vs national
+Indice Cherté =
+DIVIDE(
+    [Prix Moyen par m2],
+    CALCULATE([Prix Moyen par m2], ALL(subdim_ville[ville]))
+)
+
+// ── Surface moyenne par type de bien
+Surface Moyenne Type =
+CALCULATE(
+    AVERAGE(fact_annonces[surface]),
+    ALLEXCEPT(subdim_type_bien, subdim_type_bien[type_bien])
+)

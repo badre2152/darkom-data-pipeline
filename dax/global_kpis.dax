@@ -1,0 +1,68 @@
+// ============================================================
+// DAX MEASURES — Dashboard 1 : Vue Globale du Marché
+// Table source : fact_annonces (gold schema — Darkom.ma)
+// Dimensions   : dim_date, dim_localisation, subdim_ville,
+//                dim_bien, subdim_type_bien, dim_transaction
+// ============================================================
+
+// ── Nombre total d'annonces
+Total Annonces =
+COUNTROWS(fact_annonces)
+
+// ── Prix moyen global
+Prix Moyen =
+AVERAGE(fact_annonces[prix])
+
+// ── Prix médian
+Prix Médian =
+MEDIAN(fact_annonces[prix])
+
+// ── Surface moyenne (m²)
+Surface Moyenne =
+AVERAGE(fact_annonces[surface])
+
+// ── Prix moyen par m²
+Prix Moyen par m2 =
+AVERAGE(fact_annonces[prix_par_m2])
+
+// ── Nombre de villes distinctes
+Nb Villes =
+DISTINCTCOUNT(subdim_ville[ville])
+
+// ── Nombre d'annonces — Vente uniquement
+Total Annonces Vente =
+CALCULATE(
+    [Total Annonces],
+    dim_transaction[transaction] = "vente"
+)
+
+// ── Nombre d'annonces — Location uniquement
+Total Annonces Location =
+CALCULATE(
+    [Total Annonces],
+    dim_transaction[transaction] = "location"
+)
+
+// ── Taux Location vs Total
+Taux Location =
+DIVIDE([Total Annonces Location], [Total Annonces])
+
+// ── Taux de croissance mensuel (MoM)
+Croissance Annonces MoM =
+VAR mois_actuel =
+    CALCULATE([Total Annonces], DATESMTD(dim_date[date_publication]))
+VAR mois_precedent =
+    CALCULATE([Total Annonces], DATEADD(dim_date[date_publication], -1, MONTH))
+RETURN
+    DIVIDE(mois_actuel - mois_precedent, mois_precedent)
+
+// ── Nombre d'annonces avec anomalie
+Total Anomalies =
+CALCULATE(
+    [Total Annonces],
+    dim_anomalies[is_anomaly] = TRUE
+)
+
+// ── Taux d'anomalies
+Taux Anomalies =
+DIVIDE([Total Anomalies], [Total Annonces])

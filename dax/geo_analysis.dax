@@ -1,0 +1,66 @@
+// ============================================================
+// DAX MEASURES — Dashboard 3 : Analyse Géographique
+// Dimensions : subdim_ville, subdim_quartier, dim_localisation
+// ============================================================
+
+// ── Rang des villes par prix moyen (DESC)
+Rang Ville par Prix =
+RANKX(
+    ALL(subdim_ville[ville]),
+    [Prix Moyen],
+    ,
+    DESC,
+    DENSE
+)
+
+// ── Rang des villes par volume d'annonces (DESC)
+Rang Ville par Volume =
+RANKX(
+    ALL(subdim_ville[ville]),
+    [Total Annonces],
+    ,
+    DESC,
+    DENSE
+)
+
+// ── Part de marché par ville (% du total annonces)
+Part Marché Ville =
+DIVIDE(
+    [Total Annonces],
+    CALCULATE([Total Annonces], ALL(subdim_ville[ville]))
+)
+
+// ── Prix moyen par quartier
+Prix Moyen Quartier =
+CALCULATE(
+    AVERAGE(fact_annonces[prix]),
+    ALLEXCEPT(subdim_quartier, subdim_quartier[quartier])
+)
+
+// ── Top ville par nombre d'annonces
+Top Ville =
+FIRSTNONBLANK(
+    TOPN(1, ALL(subdim_ville[ville]), [Total Annonces], DESC),
+    1
+)
+
+// ── Top quartier par prix moyen
+Top Quartier Prix =
+FIRSTNONBLANK(
+    TOPN(1, ALL(subdim_quartier[quartier]), [Prix Moyen Quartier], DESC),
+    1
+)
+
+// ── Prix moyen par m² par ville
+Prix m2 par Ville =
+CALCULATE(
+    AVERAGE(fact_annonces[prix_par_m2]),
+    ALLEXCEPT(subdim_ville, subdim_ville[ville])
+)
+
+// ── Nombre de quartiers distincts par ville
+Nb Quartiers par Ville =
+CALCULATE(
+    DISTINCTCOUNT(subdim_quartier[quartier]),
+    ALLEXCEPT(subdim_ville, subdim_ville[ville])
+)
