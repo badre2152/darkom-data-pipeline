@@ -7,6 +7,7 @@ staging/load_staging.py — 🥉 Bronze Layer
 
 import shutil
 import pandas as pd
+from pathlib import Path
 from sqlalchemy import text
 
 from src.config import BRONZE_CSV, SCHEMA_BRONZE
@@ -32,11 +33,11 @@ def load_staging(source_csv_path: str) -> int:
 
     # ── 1. Copy raw CSV to data/bronze/ (read-only reference) ─
     BRONZE_CSV.parent.mkdir(parents=True, exist_ok=True)
-    if not BRONZE_CSV.exists():
+    if Path(source_csv_path).resolve() != BRONZE_CSV.resolve():
         shutil.copy2(source_csv_path, BRONZE_CSV)
         log.info(f"Raw CSV copied → {BRONZE_CSV}")
     else:
-        log.info(f"Raw CSV already exists at {BRONZE_CSV} — skipping copy")
+        log.info("CSV already in bronze directory — skipping copy.")
 
     # ── 2. Read CSV (all columns as str to avoid type errors) ─
     log.info(f"Reading CSV from {source_csv_path} …")
@@ -63,8 +64,8 @@ def load_staging(source_csv_path: str) -> int:
     # ── 4. Log entry ──────────────────────────────────────────
     with engine.begin() as conn:
         conn.execute(text("""
-            INSERT INTO bronze.load_logs (layer, table_name, rows_loaded, load_status)
-            VALUES ('bronze', 'bronze.stg_annonces', :n, 'SUCCESS')
+            INSERT INTO audit.load_logs (layer, table_name, rows_loaded, load_status, error_message)
+            VALUES ('bronze', 'bronze.stg_annonces', :n, 'SUCCESS', NULL)
         """), {"n": len(df)})
 
     log.info("🥉 BRONZE LAYER — Done ✓")
