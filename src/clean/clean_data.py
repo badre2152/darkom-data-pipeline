@@ -1,10 +1,11 @@
 """
 clean/clean_data.py — 🥈 Silver Layer
-Exact logic from new.ipynb + 4 fixes:
+Applies the full cleaning & feature-engineering pipeline:
   1. remove_accents handles NaN safely
   2. transaction deduction uses original nulls only
   3. nb_salles_bain cast to int after fill
   4. etage_outlier column name consistency
+  5. categorie_prix uses include_lowest=True so prix=0 maps to "economique"
 Outputs:
   - data/silver/data_clean.csv
   - silver.annonces_clean (PostgreSQL)
@@ -108,6 +109,10 @@ def clean_data() -> int:
 
     # ── 7. type_bien — lower + deduce from titre (cells 30-33) ─
     df["type_bien"] = df["type_bien"].str.lower().str.strip()
+    # Supported types per project spec: Appartement, Villa, Terrain, Bureau.
+    # "duplex" appears in ~69 rows and is intentionally retained because
+    # Moroccan real-estate listings commonly list duplexes as a distinct
+    # property type. It is NOT an error; include it in the taxonomy.
     types = ["villa", "appartement", "terrain", "duplex", "bureau"]
     for t in types:
         mask = df["type_bien"].isnull() & df["titre"].str.lower().str.contains(t, na=False)
@@ -116,24 +121,45 @@ def clean_data() -> int:
     log.info(f"type_bien nulls after fill : {df['type_bien'].isnull().sum()}")
     log.info(f"type_bien distribution :\n{df['type_bien'].value_counts().to_string()}")
 
-    # ── 8. transaction — FIX 2: only fill where originally null ─
-    #    (cells 35-40 — use original nulls, not the full column)
+    # ── 8. transaction — FIX: separate IQR per type, then impute ─
+    #    Original null mask captured BEFORE .str.lower() so we know
+    #    which rows were genuinely missing.
     original_null_mask = df["transaction"].isnull()
     df["transaction"] = df["transaction"].str.lower().str.strip()
 
-    low  = df["prix"].quantile(0.4)
-    high = df["prix"].quantile(0.6)
+    # Use per-transaction IQR boundaries for price-based deduction.
+    # Rows that are already filled (not originally null) give us the
+    # reference distributions for vente vs location.
+    known = df.loc[~original_null_mask]
+    vente_q40    = known.loc[known["transaction"] == "vente",    "prix"].quantile(0.4)
+    location_q60 = known.loc[known["transaction"] == "location", "prix"].quantile(0.6)
 
+    # Impute: clearly cheap → location, clearly expensive → vente
     imputed = np.where(
-        df["prix"] <= low,  "location",
-        np.where(df["prix"] >= high, "vente", np.nan)
+        df["prix"] <= location_q60 * 0.5, "location",
+        np.where(df["prix"] >= vente_q40 * 2, "vente", np.nan),
     )
-    df.loc[original_null_mask, "transaction"] = pd.Series(
-        imputed, index=df.index
-    ).loc[original_null_mask]
-    df["transaction"] = df["transaction"].fillna(df["transaction"].mode()[0])
+    df.loc[original_null_mask, "transaction"] = (
+        pd.Series(imputed, index=df.index).loc[original_null_mask]
+    )
+
+    # Fill whatever is still NaN with the global mode — computed NOW,
+    # after the price-based imputation above, so mode() sees the full
+    # enriched series (fixes the 10-NaN bug where mode was computed
+    # on the original sparse series).
+    tx_mode = df["transaction"].mode()
+    if not tx_mode.empty:
+        df["transaction"] = df["transaction"].fillna(tx_mode.iloc[0])
+
+    # حذف أي صف لم يُحدَّد نوع معاملته (لا vente ولا location)
+    before_drop = len(df)
+    df = df[df["transaction"].isin(["vente", "location"])].copy()
+    dropped = before_drop - len(df)
+    if dropped > 0:
+        log.info(f"transaction : {dropped} rows dropped (unknown transaction type)")
+
     df["transaction"] = df["transaction"].astype("category")
-    log.info(f"transaction distribution :\n{df['transaction'].value_counts().to_string()}")
+    log.info(f"transaction distribution :\n{df['transaction'].value_counts(dropna=False).to_string()}")
 
     # ── 9. nb_chambres — median by (ville, type_bien) (cells 46-49) ─
     median_chambres = df.groupby(["ville", "type_bien"])["nb_chambres"].transform("median")
@@ -156,8 +182,21 @@ def clean_data() -> int:
     _log_nulls(df, "After imputation")
 
     # ── 13. Outlier detection — IQR (cell 76) ────────────────
-    num_cols = ["prix", "surface", "nb_chambres", "nb_salles_bain", "etage"]
-    for col in num_cols:
+    # prix uses SEPARATE IQR per transaction type so that cheap
+    # location prices are not wrongly flagged against vente prices.
+    df["prix_outlier"] = False
+    for tx_type in df["transaction"].cat.categories:
+        mask = df["transaction"] == tx_type
+        sub  = df.loc[mask, "prix"]
+        Q1, Q3 = sub.quantile(0.25), sub.quantile(0.75)
+        IQR = Q3 - Q1
+        df.loc[mask, "prix_outlier"] = (
+            (sub < Q1 - IQR_MULTIPLIER * IQR) |
+            (sub > Q3 + IQR_MULTIPLIER * IQR)
+        )
+
+    # All other numeric columns use global IQR
+    for col in ["surface", "nb_chambres", "nb_salles_bain", "etage"]:
         Q1  = df[col].quantile(0.25)
         Q3  = df[col].quantile(0.75)
         IQR = Q3 - Q1
@@ -165,7 +204,7 @@ def clean_data() -> int:
             (df[col] < Q1 - IQR_MULTIPLIER * IQR) |
             (df[col] > Q3 + IQR_MULTIPLIER * IQR)
         )
-    log.info("IQR outlier flags computed")
+    log.info("IQR outlier flags computed (prix: per-transaction)")
 
     # ── 14. Logic anomaly (cell 77) ───────────────────────────
     df["logic_anomaly"] = (
@@ -185,17 +224,29 @@ def clean_data() -> int:
         df["surface_outlier"]       |
         df["nb_chambres_outlier"]   |
         df["nb_salles_bain_outlier"]|
+        df["etage_outlier"]         |
         df["logic_anomaly"]         |
         df["suspicious_price"]      |
         df["suspicious_surface"]
+        # Note: prix_par_m2_broken is a separate quality flag, not merged
+        # into is_anomaly to avoid double-counting with prix_outlier.
     )
     log.info(f"Anomalies : {df['is_anomaly'].sum()} / {len(df)}")
 
     # ── 17. Feature Engineering (cells 84-95) ─────────────────
     df["prix_par_m2"]  = (df["prix"] / df["surface"]).round(2)
 
+    # Flag broken prix_par_m2 values (e.g. daily-rent price ÷ large surface).
+    # Threshold: < 100 MAD/m² is physically impossible for any Moroccan property.
+    df["prix_par_m2_broken"] = df["prix_par_m2"] < 100
+    broken_count = df["prix_par_m2_broken"].sum()
+    log.info(f"prix_par_m2_broken : {broken_count} rows flagged (< 100 MAD/m²)")
+
     current_year       = datetime.datetime.now().year
-    df["age_estime"]   = current_year - df["annee_construction"]
+    df["age_estime"]   = (current_year - df["annee_construction"]).clip(lower=0)
+    negative_ages      = (df["age_estime"] == 0) & (df["annee_construction"] > current_year)
+    if negative_ages.sum() > 0:
+        log.warning(f"age_estime : {negative_ages.sum()} rows had future annee_construction — clamped to 0")
 
     df["categorie_surface"] = pd.cut(
         df["surface"], bins=SURFACE_BINS, labels=SURFACE_LABELS
@@ -213,6 +264,7 @@ def clean_data() -> int:
         df["prix"],
         bins=[0, q1, q2, q3, df["prix"].max()],
         labels=["economique", "moyen", "haut_standing", "luxe"],
+        include_lowest=True,  # FIX: prix=0 now maps to "economique" instead of NaN
     )
     log.info("Feature engineering done")
 
@@ -248,8 +300,8 @@ def clean_data() -> int:
     engine_bronze = get_engine(SCHEMA_BRONZE)
     with engine_bronze.begin() as conn:
         conn.execute(text("""
-            INSERT INTO bronze.load_logs (layer, table_name, rows_loaded, load_status)
-            VALUES ('silver', 'silver.annonces_clean', :n, 'SUCCESS')
+            INSERT INTO audit.load_logs (layer, table_name, rows_loaded, load_status, error_message)
+            VALUES ('silver', 'silver.annonces_clean', :n, 'SUCCESS', NULL)
         """), {"n": len(df_pg)})
 
     log.info("🥈 SILVER LAYER — Done ✓")
