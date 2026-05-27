@@ -1,7 +1,6 @@
-# Environment — NEVER commit real credentials
+# Environment
 .env
-# Keep the example template committed
-!.env.example
+
 
 # Python
 __pycache__/

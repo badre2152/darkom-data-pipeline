@@ -1,10 +1,3 @@
-"""
-staging/load_staging.py — 🥉 Bronze Layer
-1. Copies raw CSV → data/bronze/darkom_annonces_raw.csv  (never modified)
-2. Loads it into bronze.stg_annonces (PostgreSQL)
-3. Writes to staging.log + pipeline.log
-"""
-
 import shutil
 import pandas as pd
 from pathlib import Path
@@ -18,18 +11,9 @@ log = get_logger("staging")
 
 
 def load_staging(source_csv_path: str) -> int:
-    """
-    Parameters
-    ----------
-    source_csv_path : str
-        Absolute path to the original CSV file.
-
-    Returns
-    -------
-    int : number of rows loaded
-    """
+   
     log.info("═" * 60)
-    log.info("🥉 BRONZE LAYER — Starting …")
+    log.info(" BRONZE LAYER — Starting …")
 
     # ── 1. Copy raw CSV to data/bronze/ (read-only reference) ─
     BRONZE_CSV.parent.mkdir(parents=True, exist_ok=True)
@@ -68,7 +52,7 @@ def load_staging(source_csv_path: str) -> int:
             VALUES ('bronze', 'bronze.stg_annonces', :n, 'SUCCESS', NULL)
         """), {"n": len(df)})
 
-    log.info("🥉 BRONZE LAYER — Done ✓")
+    log.info(" BRONZE LAYER — Done ✓")
     log.info("═" * 60)
     return len(df)
 

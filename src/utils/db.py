@@ -1,8 +1,3 @@
-"""
-utils/db.py
-get_engine(schema) → SQLAlchemy engine connected to PostgreSQL via .env
-"""
-
 import os
 from sqlalchemy import create_engine, text
 from dotenv import load_dotenv
@@ -13,10 +8,7 @@ log = get_logger("db")
 
 
 def get_engine(schema: str = "public"):
-    """
-    Returns a SQLAlchemy engine for the given PostgreSQL schema.
-    Credentials are read from .env
-    """
+   
     user     = os.getenv("DB_USER",     "postgres")
     password = os.getenv("DB_PASSWORD", "")
     host     = os.getenv("DB_HOST",     "localhost")
@@ -36,6 +28,6 @@ def get_engine(schema: str = "public"):
 
 
 def execute_sql(engine, sql: str):
-    """Helper to run raw SQL statements."""
+    
     with engine.begin() as conn:
         conn.execute(text(sql))

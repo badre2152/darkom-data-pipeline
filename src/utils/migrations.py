@@ -1,9 +1,3 @@
-"""
-utils/migrations.py
-Creates schemas (bronze / silver / gold) and the staging table.
-Run ONCE before the pipeline: make migrate
-"""
-
 from sqlalchemy import text
 from src.utils.db import get_engine
 from src.utils.logger import get_logger

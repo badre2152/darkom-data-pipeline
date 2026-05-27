@@ -1,10 +1,3 @@
-"""
-warehouse/bi_schema.py — 🥇 Gold Layer
-Builds the full Snowflake Schema in PostgreSQL (gold schema)
-and exports data_warehouse_ready.csv to data/gold/bi/
-Schema based on DBML: immobilier_snowflake
-"""
-
 import numpy as np
 import pandas as pd
 from sqlalchemy import text
@@ -29,15 +22,14 @@ def _drop_create(conn, ddl: str, name: str):
 # ─────────────────────────────────────────────────────────────
 def build_warehouse() -> int:
     log.info("═" * 60)
-    log.info("🥇 GOLD LAYER — Starting …")
+    log.info(" GOLD LAYER — Starting …")
 
     # ── 0. Load from silver ───────────────────────────────────
     engine_silver = get_engine(SCHEMA_SILVER)
     df = pd.read_sql("SELECT * FROM silver.annonces_clean", engine_silver)
     log.info(f"Read {len(df)} rows from silver.annonces_clean")
 
-    # Guard: replace inf/-inf in prix_par_m2 with NaN so PostgreSQL
-    # DECIMAL columns don't silently drop rows or raise errors.
+    
     df["prix_par_m2"] = df["prix_par_m2"].replace([np.inf, -np.inf], np.nan)
     bad_ppm2 = df["prix_par_m2"].isna().sum()
     if bad_ppm2 > 0:
@@ -191,9 +183,7 @@ def build_warehouse() -> int:
     # POPULATE — using pandas for simplicity + safety
     # ════════════════════════════════════════════════════════
 
-    # Helper: insert a sub-dim atomically and return id-map.
-    # Uses a dedicated short transaction per subdim to keep inserts
-    # and the subsequent SELECT within the same engine scope.
+    
     def insert_subdim(table, col, values):
         rows = pd.DataFrame({col: sorted(values)})
         with engine.begin() as _conn:
@@ -216,8 +206,7 @@ def build_warehouse() -> int:
     st = insert_subdim("gold.subdim_type_bien", "type_bien", types)
 
     # ── subdim_construction ───────────────────────────────────
-    # NOTE: uses to_sql directly (multi-column / integer PK — not a simple text dimension
-    # suited for insert_subdim helper). Pattern is intentional and consistent.
+    
     annees = df["annee_construction"].dropna().astype(int).unique()
     sc_df = pd.DataFrame({"annee_construction": sorted(annees)})
     sc_df.to_sql("subdim_construction", schema="gold", con=engine,
@@ -226,8 +215,7 @@ def build_warehouse() -> int:
     log.info(f"  gold.subdim_construction : {len(sc)} rows")
 
     # ── subdim_caracteristique ────────────────────────────────
-    # NOTE: composite key (nb_chambres, nb_salles_bain, etage) — insert_subdim
-    # helper only handles single text-column dimensions. Direct to_sql is correct here.
+    
     caract = df[["nb_chambres", "nb_salles_bain", "etage"]].drop_duplicates().dropna()
     caract = caract.astype(int)
     caract.to_sql("subdim_caracteristique", schema="gold", con=engine,
@@ -410,7 +398,7 @@ def build_warehouse() -> int:
             VALUES ('gold', 'gold.fact_annonces', :n, 'SUCCESS', NULL)
         """), {"n": len(fact_final)})
 
-    log.info("🥇 GOLD LAYER — Done ✓")
+    log.info(" GOLD LAYER — Done ✓")
     log.info("═" * 60)
     return len(fact_final)
 

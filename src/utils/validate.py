@@ -1,12 +1,3 @@
-"""
-utils/validate.py — ✅ Validation du Data Warehouse
-Vérifie la cohérence, la qualité et l'intégrité du Gold Layer.
-
-Usage:
-    python -m src.utils.validate
-    make validate
-"""
-
 import sys
 import pandas as pd
 from sqlalchemy import text
@@ -22,7 +13,7 @@ log = get_logger("validate")
 # ─────────────────────────────────────────────────────────────
 
 def _check(label: str, passed: bool, detail: str = ""):
-    status = "✅ PASS" if passed else "❌ FAIL"
+    status = " PASS" if passed else " FAIL"
     msg = f"  {status}  |  {label}"
     if detail:
         msg += f"  →  {detail}"
@@ -38,7 +29,7 @@ def _check(label: str, passed: bool, detail: str = ""):
 # ─────────────────────────────────────────────────────────────
 
 def validate_row_counts(engine_silver, engine_gold) -> bool:
-    """Silver → Gold : les lignes fact_annonces ≤ silver (filtrage attendu)."""
+    
     log.info("── 1. Validation des volumes ──────────────────────────")
 
     silver_count = pd.read_sql(
@@ -73,7 +64,7 @@ def validate_row_counts(engine_silver, engine_gold) -> bool:
 
 
 def validate_foreign_keys(engine_gold) -> bool:
-    """Vérifie l'absence de clés étrangères orphelines dans fact_annonces."""
+    
     log.info("── 2. Intégrité des clés étrangères ───────────────────")
 
     checks = {
@@ -104,7 +95,7 @@ def validate_foreign_keys(engine_gold) -> bool:
 
 
 def validate_required_columns(engine_silver) -> bool:
-    """Vérifie que toutes les colonnes de feature engineering sont présentes."""
+    
     log.info("── 3. Colonnes requises (Silver) ──────────────────────")
 
     required = [
@@ -132,10 +123,10 @@ def validate_required_columns(engine_silver) -> bool:
 
 
 def validate_value_ranges(engine_silver) -> bool:
-    """Vérifie les plages de valeurs sur les colonnes clés."""
+    
     log.info("── 4. Plages de valeurs (Silver) ──────────────────────")
 
-    # FIX (scalability): push aggregation to SQL — no full table load in memory
+    
     sql_checks = [
         ("prix > 0",           "SELECT COUNT(*) AS n FROM silver.annonces_clean WHERE prix IS NOT NULL AND prix <= 0"),
         ("surface > 0",        "SELECT COUNT(*) AS n FROM silver.annonces_clean WHERE surface IS NOT NULL AND surface <= 0"),
@@ -156,7 +147,7 @@ def validate_value_ranges(engine_silver) -> bool:
 
 
 def validate_no_nulls_in_fact(engine_gold) -> bool:
-    """Vérifie l'absence de nulls dans les colonnes critiques de fact_annonces."""
+    
     log.info("── 5. Nulls dans fact_annonces ────────────────────────")
 
     critical_cols = [
@@ -180,7 +171,7 @@ def validate_no_nulls_in_fact(engine_gold) -> bool:
 
 
 def validate_duplicates(engine_silver, engine_gold) -> bool:
-    """Vérifie l'absence de doublons sur les PKs."""
+    
     log.info("── 6. Doublons sur les clés primaires ─────────────────")
 
     checks = [
@@ -203,7 +194,7 @@ def validate_duplicates(engine_silver, engine_gold) -> bool:
 
 
 def print_summary(engine_silver, engine_gold):
-    """Affiche un résumé des statistiques clés du DWH."""
+    
     log.info("── 7. Résumé du Data Warehouse ────────────────────────")
 
     silver_rows = pd.read_sql("SELECT COUNT(*) AS n FROM silver.annonces_clean", engine_silver)["n"].iloc[0]
@@ -238,7 +229,7 @@ def print_summary(engine_silver, engine_gold):
 
 def run_validation() -> bool:
     log.info("═" * 60)
-    log.info("✅ VALIDATION DU DATA WAREHOUSE — Démarrage …")
+    log.info(" VALIDATION DU DATA WAREHOUSE — Démarrage …")
 
     engine_silver = get_engine(SCHEMA_SILVER)
     engine_gold   = get_engine(SCHEMA_GOLD)
@@ -259,7 +250,7 @@ def run_validation() -> bool:
 
     log.info("═" * 60)
     if all(results):
-        log.info(f"✅ VALIDATION RÉUSSIE — {passed}/{total} contrôles passés")
+        log.info(f" VALIDATION RÉUSSIE — {passed}/{total} contrôles passés")
     else:
         log.error(f"❌ VALIDATION ÉCHOUÉE — {passed}/{total} contrôles passés")
 

@@ -1,8 +1,3 @@
-"""
-utils/logger.py
-get_logger(name) → writes to its own log file AND pipeline.log
-"""
-
 import logging
 from pathlib import Path
 from src.config import LOGS_DIR, LOG_PIPELINE, LOG_DB, LOG_VALIDATE
@@ -25,19 +20,14 @@ _DATE_FMT = "%Y-%m-%d %H:%M:%S"
 
 
 def get_logger(name: str) -> logging.Logger:
-    """
-    Returns a logger that writes to:
-      - logs/<name>.log   (layer-specific)
-      - logs/pipeline.log (global)
-    """
+    
     logger = logging.getLogger(name)
 
-    if logger.handlers:          # avoid duplicate handlers on re-import
+    if logger.handlers:          
         return logger
 
     logger.setLevel(logging.DEBUG)
-    logger.propagate = False  # FIX: prevent log records bubbling to root logger
-    # (avoids duplicate console output when root logger also has handlers)
+    logger.propagate = False  
     formatter = logging.Formatter(_FMT, datefmt=_DATE_FMT)
 
     # ── Layer-specific file handler ──────────────────────────

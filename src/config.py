@@ -1,11 +1,7 @@
-"""
-config.py — Project constants and paths
-"""
-
 from pathlib import Path
 
 # ─── Root ────────────────────────────────────────────────────
-# Resolved relative to this file so the project runs on any machine.
+
 ROOT_DIR = Path(__file__).parent.parent
 
 # ─── Data paths ──────────────────────────────────────────────
