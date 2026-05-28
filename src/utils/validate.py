@@ -252,7 +252,7 @@ def run_validation() -> bool:
     if all(results):
         log.info(f" VALIDATION RÉUSSIE — {passed}/{total} contrôles passés")
     else:
-        log.error(f"❌ VALIDATION ÉCHOUÉE — {passed}/{total} contrôles passés")
+        log.error(f" VALIDATION ÉCHOUÉE — {passed}/{total} contrôles passés")
 
     log.info("═" * 60)
     return all(results)
