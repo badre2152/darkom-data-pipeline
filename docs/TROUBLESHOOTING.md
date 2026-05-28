@@ -21,19 +21,21 @@ It is fixed — `config.py` now uses `Path(__file__).parent.parent`.
 
 ## Pipeline failures
 
-### `🥉 Bronze FAILED` in pipeline.log
+### `Bronze FAILED` in pipeline.log
 - CSV file path passed to `--csv` does not exist.
 - CSV encoding issue: the file must be UTF-8. Convert with `iconv -f latin1 -t utf-8 file.csv > file_utf8.csv`.
 
-### `🥈 Silver FAILED` in pipeline.log
+### `Silver FAILED` in pipeline.log
 Check `clean.log` for the traceback. Common causes:
 - Bronze table `bronze.stg_annonces` is empty (Bronze stage failed before).
 - A column expected by the cleaning script is missing from the CSV.
 
-### `🥇 Gold FAILED` in pipeline.log
+### `Gold FAILED` in pipeline.log
 Check `bi_schema.log`. Common causes:
 - Silver table is empty or missing a required column such as `prix_par_m2_broken` (regenerate Silver first).
 - Unique constraint violation in a sub-dimension table — usually means the pipeline was interrupted mid-run. Run `make clean-db` (drops bronze/silver/gold schemas) then `make pipeline` to restart cleanly.
+
+> **Note :** `make clean-db` supprime uniquement les schemas `bronze`, `silver` et `gold`. Le schema `audit` (et ses logs historiques dans `audit.load_logs`) n'est **pas** supprimé. Si vous souhaitez repartir de zéro complètement, supprimez manuellement le schema audit : `psql -d darkom_dwh -c "DROP SCHEMA IF EXISTS audit CASCADE"`.
 
 ## Data quality issues
 
@@ -42,7 +44,9 @@ Expected before the per-transaction IQR fix. After the fix the rate should be �
 If still high, check that `transaction` has no NaN rows (see `clean.log`).
 
 ### prix_par_m2 < 100 MAD/m²
-These are flagged in `prix_par_m2_broken`. In Power BI add a filter `prix_par_m2_broken = FALSE` to exclude them from price analyses.
+These are flagged in `prix_par_m2_broken`. In Power BI add a filter on `subdim_anomalie_detail[prix_par_m2_broken] = FALSE` to exclude them from price analyses.
+
+> **Note (v1.4.0) :** `prix_par_m2_broken` is in `subdim_anomalie_detail`, not in `dim_anomalies`.
 
 ### duplex not in Power BI type_bien slicer
 Duplex is intentionally kept as a valid type. It is included in `gold.subdim_type_bien`. If it does not appear, refresh the Power BI dataset.

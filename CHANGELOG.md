@@ -5,6 +5,28 @@ Format basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
 ---
 
+## [1.6.0] — 2026-05-28
+
+### Corrigé — Documentation
+- `docs/bi_architecture.md` — `dim_anomalies` corrigée : ne liste plus les 9 flags directement ; nouvelle section `subdim_anomalie_detail` ajoutée avec description complète des colonnes
+- `docs/bi_architecture.md` — diagrammes flux et Snowflake Schema mis à jour (`dim_anomalies → subdim_anomalie_detail`)
+- `docs/TROUBLESHOOTING.md` — titres des sections `Bronze/Silver/Gold FAILED` corrigés : emoji 🥉🥈🥇 supprimées (absentes des vrais messages de log dans `pipeline.py`)
+- `docs/TROUBLESHOOTING.md` — filtre `prix_par_m2_broken` corrigé : référence `subdim_anomalie_detail[prix_par_m2_broken]` au lieu de `dim_anomalies`
+- `docs/TROUBLESHOOTING.md` — ajout note sur `make clean-db` : précise que le schema `audit` n'est pas supprimé et comment le supprimer manuellement
+- `docs/log-analysis.md` — `NNN / 1500` remplacé par `NNN / TOTAL` (1500 était un nombre figé ne reflétant pas la taille réelle du dataset)
+- `powerquery/transformations.md` — `subdim_anomalie_detail` ajoutée dans la liste des tables importées et dans le bloc de transformations
+- `powerquery/transformations.md` — section `dim_anomalies` corrigée (ne liste plus que `is_anomaly` et les FKs)
+- `powerquery/transformations.md` — ordre de chargement mis à jour (ajout `subdim_anomalie_detail` en étape 1)
+- `powerquery/transformations.md` — diagramme de relations mis à jour (`subdim_anomalie_detail` ajoutée sous `dim_anomalies`)
+- `powerquery/transformations.md` — section "Filtres à exclure des analyses de prix" corrigée : `prix_par_m2_broken` référencé sur `subdim_anomalie_detail` et non sur `dim_anomalies`
+- `dax/price_analysis.dax` — mesure `Prix Moyen m2 Propre` corrigée : `dim_anomalies[prix_par_m2_broken]` remplacé par `subdim_anomalie_detail[prix_par_m2_broken]`
+- `README.md` — arborescence du projet complétée : ajout `Schema_Diagrame.png`, `bi_architecture.md`, `rapport_screenshots/` (5 captures), `dax/`, `powerquery/`, `powerbi/`
+
+### Ajouté
+- `.env.example` — fichier modèle de configuration manquant (référencé dans le README depuis v1.2.0 mais absent du dépôt)
+
+---
+
 ## [1.5.0] — 2026-05-24
 
 ### Modifié

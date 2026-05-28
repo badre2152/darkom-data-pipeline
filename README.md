@@ -84,9 +84,17 @@ jeury-brief/
 │   └── gold/bi/                 # Export DWH prêt Power BI
 │       └── data_warehouse_ready.csv
 ├── docs/
-│   ├── architecturemok.png
+│   ├── architecturemok.png      # Schéma d'architecture
+│   ├── Schema_Diagrame.png      # Schéma de la base de données
+│   ├── bi_architecture.md       # Architecture BI & tables Gold
 │   ├── log-analysis.md          # Guide d'analyse des logs
-│   └── TROUBLESHOOTING.md       # Guide de dépannage
+│   ├── TROUBLESHOOTING.md       # Guide de dépannage
+│   └── rapport_screenshots/     # Captures des dashboards Power BI
+│       ├── Home.png
+│       ├── Vue_Globale.png
+│       ├── Analyse_Prix.png
+│       ├── Analyse_Geographique.png
+│       └── Tendances.png
 ├── logs/                        # Logs par couche
 │   ├── pipeline.log
 │   ├── staging.log
@@ -97,6 +105,15 @@ jeury-brief/
 │   └── validate.log
 ├── notebook/
 │   └── Data_preparation_logic.ipynb
+├── dax/                         # Mesures DAX Power BI
+│   ├── global_kpis.dax
+│   ├── price_analysis.dax
+│   ├── trend_analysis.dax
+│   └── geo_analysis.dax
+├── powerquery/                  # Transformations Power Query
+│   └── transformations.md
+├── powerbi/                     # Fichier rapport Power BI
+│   └── darkom.pbix
 ├── src/
 │   ├── config.py                # Constantes & chemins
 │   ├── pipeline.py              # Orchestrateur principal

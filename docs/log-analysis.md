@@ -32,7 +32,7 @@ Normal when `suspicious_price` catches short-term rental prices.
 After the per-transaction IQR fix the rate should drop below ~20 %.
 If still high, inspect `clean.log`:
 ```
-Anomalies : NNN / 1500
+Anomalies : NNN / TOTAL
 ```
 
 ### Gold layer runs on stale Silver data

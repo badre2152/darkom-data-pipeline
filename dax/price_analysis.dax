@@ -20,7 +20,7 @@ Prix Moyen m2 Propre =
 CALCULATE(
     AVERAGE(fact_annonces[prix_par_m2]),
     dim_anomalies[is_anomaly] = FALSE,
-    dim_anomalies[prix_par_m2_broken] = FALSE
+    subdim_anomalie_detail[prix_par_m2_broken] = FALSE
 )
 
 // ── % annonces par catégorie de prix

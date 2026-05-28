@@ -16,7 +16,7 @@
     ├── dim_bien         → subdim_type_bien, subdim_construction, subdim_caracteristique
     ├── dim_transaction
     ├── dim_category
-    └── dim_anomalies
+    └── dim_anomalies → subdim_anomalie_detail
     ↓ Power Query (nettoyage léger + colonnes calculées)
 [Modèle Power BI — Snowflake Schema]
     ↓ DAX Measures
@@ -38,7 +38,7 @@ subdim_quartier → dim_localisation ── fact_annonces ── dim_bien ← su
                                           │                     ← subdim_caracteristique
                                     dim_transaction
                                     dim_category
-                                    dim_anomalies
+                                    dim_anomalies → subdim_anomalie_detail
 ```
 
 ---
@@ -100,9 +100,31 @@ Valeurs : `vente` / `location`
 | luxury | BOOLEAN | Annonce de luxe (> P99 prix) |
 
 ### dim_anomalies
-Flags booléens par annonce : `is_anomaly`, `prix_outlier`, `surface_outlier`,
-`nb_chambres_outlier`, `etage_outlier`, `logic_anomaly`, `suspicious_price`,
-`suspicious_surface`, `prix_par_m2_broken`
+| Colonne | Type | Description |
+|---------|------|-------------|
+| anomalie_id | SERIAL | Clé primaire |
+| annonce_id | VARCHAR | UNIQUE — référence à fact_annonces |
+| is_anomaly | BOOLEAN | TRUE si au moins un flag de détail est actif |
+| detail_id | INT | FK → subdim_anomalie_detail |
+
+> **Note (v1.4.0) :** Les 9 flags de détail ont été déplacés vers `subdim_anomalie_detail`.
+> `dim_anomalies` ne contient plus que `annonce_id`, `is_anomaly` et `detail_id`.
+
+### subdim_anomalie_detail
+Chaque ligne représente une combinaison unique de flags — dédoublonnée.
+
+| Colonne | Type | Description |
+|---------|------|-------------|
+| detail_id | SERIAL | Clé primaire |
+| prix_outlier | BOOLEAN | Prix hors IQR × 1.5 |
+| surface_outlier | BOOLEAN | Surface hors IQR × 1.5 |
+| nb_chambres_outlier | BOOLEAN | Nb chambres hors IQR × 1.5 |
+| nb_salles_bain_outlier | BOOLEAN | Nb SdB hors IQR × 1.5 |
+| etage_outlier | BOOLEAN | Étage hors IQR × 1.5 |
+| logic_anomaly | BOOLEAN | Anomalie logique métier (ex. surface > 30m² sans SdB) |
+| suspicious_price | BOOLEAN | Prix < 5 000 MAD |
+| suspicious_surface | BOOLEAN | Surface < 15 m² |
+| prix_par_m2_broken | BOOLEAN | Prix/m² < 100 MAD/m² |
 
 ---
 

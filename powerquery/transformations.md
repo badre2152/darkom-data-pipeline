@@ -29,7 +29,8 @@ Mode     : Import (recommandé pour les performances)
 | `subdim_caracteristique` | Chambres / SdB / étage |
 | `dim_transaction` | Vente ou Location |
 | `dim_category` | Catégorie prix + surface |
-| `dim_anomalies` | Flags qualité par annonce |
+| `dim_anomalies` | Flag agrégé qualité par annonce |
+| `subdim_anomalie_detail` | 9 flags de détail (outliers, anomalies logiques) |
 
 > Importer toutes les tables du schema `gold` — ne pas importer `bronze` ni `silver`.
 
@@ -73,8 +74,18 @@ Mode     : Import (recommandé pour les performances)
 ### dim_anomalies
 
 ```
+1. Changer type [is_anomaly] → True/False
+2. Changer type [anomalie_id], [detail_id] → Integer
+```
+
+> **Note (v1.4.0) :** `dim_anomalies` ne contient plus les flags de détail directement.
+> Ils ont été déplacés vers `subdim_anomalie_detail` (voir ci-dessous).
+
+### subdim_anomalie_detail
+
+```
 1. Changer types booléens → True/False :
-   is_anomaly, prix_outlier, surface_outlier, nb_chambres_outlier,
+   prix_outlier, surface_outlier, nb_chambres_outlier,
    nb_salles_bain_outlier, etage_outlier, logic_anomaly,
    suspicious_price, suspicious_surface, prix_par_m2_broken
 ```
@@ -90,7 +101,7 @@ Mode     : Import (recommandé pour les performances)
 
 ## Ordre de chargement recommandé
 
-1. `subdim_ville`, `subdim_quartier`, `subdim_type_bien`, `subdim_construction`, `subdim_caracteristique`
+1. `subdim_ville`, `subdim_quartier`, `subdim_type_bien`, `subdim_construction`, `subdim_caracteristique`, `subdim_anomalie_detail`
 2. `dim_date`, `dim_localisation`, `dim_bien`, `dim_transaction`, `dim_category`, `dim_anomalies`
 3. `fact_annonces` (en dernier — dépend de toutes les dimensions)
 
@@ -111,6 +122,7 @@ fact_annonces
    ├── dim_transaction     (fact_annonces[transaction_id]   → dim_transaction[transaction_id])
    ├── dim_category        (fact_annonces[prix_category_id] → dim_category[prix_category_id])
    └── dim_anomalies       (fact_annonces[anomalie_id]      → dim_anomalies[anomalie_id])
+           └── subdim_anomalie_detail (dim_anomalies[detail_id] → subdim_anomalie_detail[detail_id])
 ```
 
 ---
@@ -120,9 +132,12 @@ fact_annonces
 Pour des analyses de prix fiables, appliquer ces filtres dans les visuels ou mesures DAX :
 
 ```
-dim_anomalies[is_anomaly]       = FALSE
-dim_anomalies[prix_par_m2_broken] = FALSE
+dim_anomalies[is_anomaly]                  = FALSE
+subdim_anomalie_detail[prix_par_m2_broken] = FALSE
 ```
+
+> **Important :** `prix_par_m2_broken` se trouve dans `subdim_anomalie_detail`, pas dans `dim_anomalies`.
+> Depuis v1.4.0, `dim_anomalies` ne contient que `anomalie_id`, `annonce_id`, `is_anomaly` et `detail_id`.
 
 Ou créer une mesure de base filtrée :
 
