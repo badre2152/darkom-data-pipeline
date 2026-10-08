@@ -8,9 +8,9 @@ from src.utils.logger import get_logger
 
 log = get_logger("validate")
 
-# ─────────────────────────────────────────────────────────────
+
 # HELPERS
-# ─────────────────────────────────────────────────────────────
+
 
 def _check(label: str, passed: bool, detail: str = ""):
     status = " PASS" if passed else " FAIL"
@@ -24,13 +24,13 @@ def _check(label: str, passed: bool, detail: str = ""):
     return passed
 
 
-# ─────────────────────────────────────────────────────────────
+
 # VALIDATIONS
-# ─────────────────────────────────────────────────────────────
+
 
 def validate_row_counts(engine_silver, engine_gold) -> bool:
     
-    log.info("── 1. Validation des volumes ──────────────────────────")
+    log.info("1. Validation des volumes")
 
     silver_count = pd.read_sql(
         "SELECT COUNT(*) AS n FROM silver.annonces_clean", engine_silver
@@ -65,7 +65,7 @@ def validate_row_counts(engine_silver, engine_gold) -> bool:
 
 def validate_foreign_keys(engine_gold) -> bool:
     
-    log.info("── 2. Intégrité des clés étrangères ───────────────────")
+    log.info("2. Intégrité des clés étrangères")
 
     checks = {
         "date_id":          ("dim_date",        "date_id"),
@@ -96,7 +96,7 @@ def validate_foreign_keys(engine_gold) -> bool:
 
 def validate_required_columns(engine_silver) -> bool:
     
-    log.info("── 3. Colonnes requises (Silver) ──────────────────────")
+    log.info("3. Colonnes requises (Silver)")
 
     required = [
         "prix_par_m2", "prix_par_m2_broken", "age_estime",
@@ -124,7 +124,7 @@ def validate_required_columns(engine_silver) -> bool:
 
 def validate_value_ranges(engine_silver) -> bool:
     
-    log.info("── 4. Plages de valeurs (Silver) ──────────────────────")
+    log.info("4. Plages de valeurs (Silver)")
 
     
     sql_checks = [
@@ -148,7 +148,7 @@ def validate_value_ranges(engine_silver) -> bool:
 
 def validate_no_nulls_in_fact(engine_gold) -> bool:
     
-    log.info("── 5. Nulls dans fact_annonces ────────────────────────")
+    log.info("5. Nulls dans fact_annonces")
 
     critical_cols = [
         "annonce_id", "date_id", "localisation_id",
@@ -172,7 +172,7 @@ def validate_no_nulls_in_fact(engine_gold) -> bool:
 
 def validate_duplicates(engine_silver, engine_gold) -> bool:
     
-    log.info("── 6. Doublons sur les clés primaires ─────────────────")
+    log.info("6. Doublons sur les clés primaires")
 
     checks = [
         (engine_silver, "SELECT COUNT(*) - COUNT(DISTINCT annonce_id) AS dup FROM silver.annonces_clean",
@@ -187,7 +187,7 @@ def validate_duplicates(engine_silver, engine_gold) -> bool:
     for engine, sql, label in checks:
         dup = pd.read_sql(sql, engine)["dup"].iloc[0]
         ok = dup == 0
-        _check(f"Pas de doublons — {label}", ok, f"{dup} doublons" if not ok else "OK")
+        _check(f"Pas de doublons: {label}", ok, f"{dup} doublons" if not ok else "OK")
         all_ok = all_ok and ok
 
     return all_ok
@@ -195,7 +195,7 @@ def validate_duplicates(engine_silver, engine_gold) -> bool:
 
 def print_summary(engine_silver, engine_gold):
     
-    log.info("── 7. Résumé du Data Warehouse ────────────────────────")
+    log.info("7. Résumé du Data Warehouse")
 
     silver_rows = pd.read_sql("SELECT COUNT(*) AS n FROM silver.annonces_clean", engine_silver)["n"].iloc[0]
     gold_rows   = pd.read_sql("SELECT COUNT(*) AS n FROM gold.fact_annonces", engine_gold)["n"].iloc[0]
@@ -223,13 +223,13 @@ def print_summary(engine_silver, engine_gold):
     log.info(f"  Prix min/moy/max (MAD)    : {int(row['min_prix']):,} / {int(row['avg_prix']):,} / {int(row['max_prix']):,}")
 
 
-# ─────────────────────────────────────────────────────────────
+
 # MAIN
-# ─────────────────────────────────────────────────────────────
+
 
 def run_validation() -> bool:
     log.info("═" * 60)
-    log.info(" VALIDATION DU DATA WAREHOUSE — Démarrage …")
+    log.info(" VALIDATION DU DATA WAREHOUSE: Démarrage …")
 
     engine_silver = get_engine(SCHEMA_SILVER)
     engine_gold   = get_engine(SCHEMA_GOLD)
@@ -250,9 +250,9 @@ def run_validation() -> bool:
 
     log.info("═" * 60)
     if all(results):
-        log.info(f" VALIDATION RÉUSSIE — {passed}/{total} contrôles passés")
+        log.info(f" VALIDATION RÉUSSIE: {passed}/{total} contrôles passés")
     else:
-        log.error(f" VALIDATION ÉCHOUÉE — {passed}/{total} contrôles passés")
+        log.error(f" VALIDATION ÉCHOUÉE: {passed}/{total} contrôles passés")
 
     log.info("═" * 60)
     return all(results)
