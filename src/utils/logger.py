@@ -30,18 +30,18 @@ def get_logger(name: str) -> logging.Logger:
     logger.propagate = False  
     formatter = logging.Formatter(_FMT, datefmt=_DATE_FMT)
 
-    # ── Layer-specific file handler ──────────────────────────
+    # Layer specific file handler
     layer_log = _LOG_MAP.get(name, LOGS_DIR / f"{name}.log")
     fh_layer = logging.FileHandler(layer_log, encoding="utf-8")
     fh_layer.setFormatter(formatter)
     logger.addHandler(fh_layer)
 
-    # ── Global pipeline.log handler ──────────────────────────
+    # Global pipeline.log handler
     fh_pipeline = logging.FileHandler(LOG_PIPELINE, encoding="utf-8")
     fh_pipeline.setFormatter(formatter)
     logger.addHandler(fh_pipeline)
 
-    # ── Console handler ──────────────────────────────────────
+    # Console handler
     ch = logging.StreamHandler()
     ch.setFormatter(formatter)
     logger.addHandler(ch)
