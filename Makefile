@@ -1,5 +1,5 @@
 # ============================================================
-#  Darkom.ma — Makefile
+#  Darkom.ma: Makefile
 #  Usage:
 #    make migrate
 #    make pipeline CSV=data/bronze/darkom_annonces_raw.csv
@@ -14,19 +14,19 @@
 # Default CSV path (override with CSV=path/to/file.csv)
 CSV ?= data/bronze/darkom_annonces_raw.csv
 
-# ── Install dependencies ──────────────────────────────────────
+# Install dependencies
 install:
 	pip install -r requirements.txt
 
-# ── Run migrations (once) ────────────────────────────────────
+# Run migrations (once)
 migrate:
 	python -m src.utils.migrations
 
-# ── Full pipeline: Bronze → Silver → Gold ────────────────────
+# Full pipeline: Bronze → Silver → Gold
 pipeline:
 	python -m src.pipeline --csv $(CSV)
 
-# ── Individual layers ─────────────────────────────────────────
+# Individual layers
 bronze:
 ifndef CSV
 	$(error CSV is not set. Usage: make bronze CSV=path/to/file.csv)
@@ -39,11 +39,11 @@ silver:
 gold:
 	python -m src.warehouse.bi_schema
 
-# ── Validate Data Warehouse ───────────────────────────────────
+# Validate Data Warehouse
 validate:
 	python -m src.utils.validate
 
-# ── Drop all DWH schemas (bronze / silver / gold) ────────────
+# Drop all DWH schemas (bronze / silver / gold)
 # Use before a full re-run from scratch to avoid stale data.
 clean-db:
 	python -c "\
