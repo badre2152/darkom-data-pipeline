@@ -77,12 +77,10 @@ gold.fact_annonces
 ```
 darkom-data-pipeline/
 ├── data/
-│   ├── bronze/                  # CSV source (immuable)
-│   │   └── darkom_annonces_raw.csv
-│   ├── silver/                  # CSV nettoyé
-│   │   └── data_clean.csv
-│   └── gold/bi/                 # Export DWH prêt Power BI
-│       └── data_warehouse_ready.csv
+│   ├── README.md                # Guide pour fournir le CSV source localement
+│   ├── bronze/                  # Reçoit le CSV source local
+│   ├── silver/                  # Reçoit le CSV nettoyé
+│   └── gold/bi/                 # Reçoit l'export DWH pour Power BI
 ├── docs/
 │   ├── architecturemok.png      # Schéma d'architecture
 │   ├── Schema_Diagrame.png      # Schéma de la base de données
@@ -199,22 +197,28 @@ GRANT ALL ON SCHEMA public TO darkom_user;
 
 ## 🚀 Lancer le Pipeline
 
-### Pipeline complet (recommandé)
+### Fournir le CSV source
+
+Le CSV brut n'est pas inclus dans le dépôt. Les fichiers CSV sous `data/` sont ignorés par Git.
+
+Vous pouvez garder le fichier source où vous voulez et passer son chemin au pipeline. Le loader Bronze le copie ensuite dans `data/bronze/darkom_annonces_raw.csv`.
+
+### Pipeline complet
 
 ```bash
-make pipeline
+make pipeline CSV=/chemin/vers/darkom_annonces_raw.csv
 ```
 
-> Le CSV par défaut est `data/bronze/darkom_annonces_raw.csv`. Si le fichier source se trouve déjà dans ce répertoire, le pipeline l'utilise directement sans recopie.
+Si vous placez déjà le fichier dans `data/bronze/darkom_annonces_raw.csv`, la commande `make pipeline` utilise ce chemin par défaut.
 
 ### Couches individuelles
 
 ```bash
-make migrate                                        # Créer schemas & tables (une seule fois)
-make bronze CSV=data/bronze/darkom_annonces_raw.csv # Charger le CSV brut
-make silver                                         # Nettoyer + feature engineering
-make gold                                           # Construire le Snowflake Schema
-make validate                                       # Valider la cohérence du DWH
+make migrate
+make bronze CSV=/chemin/vers/darkom_annonces_raw.csv
+make silver
+make gold
+make validate
 ```
 
 ### Repartir de zéro
