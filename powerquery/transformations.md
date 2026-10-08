@@ -1,4 +1,4 @@
-# Power Query — Transformations Documentation
+# Power Query: Transformations Documentation
 
 ## Connexion à la base de données
 
@@ -32,7 +32,7 @@ Mode     : Import (recommandé pour les performances)
 | `dim_anomalies` | Flag agrégé qualité par annonce |
 | `subdim_anomalie_detail` | 9 flags de détail (outliers, anomalies logiques) |
 
-> Importer toutes les tables du schema `gold` — ne pas importer `bronze` ni `silver`.
+> Importer toutes les tables du schema `gold`: ne pas importer `bronze` ni `silver`.
 
 ---
 
@@ -103,7 +103,7 @@ Mode     : Import (recommandé pour les performances)
 
 1. `subdim_ville`, `subdim_quartier`, `subdim_type_bien`, `subdim_construction`, `subdim_caracteristique`, `subdim_anomalie_detail`
 2. `dim_date`, `dim_localisation`, `dim_bien`, `dim_transaction`, `dim_category`, `dim_anomalies`
-3. `fact_annonces` (en dernier — dépend de toutes les dimensions)
+3. `fact_annonces` (en dernier: dépend de toutes les dimensions)
 
 ---
 
