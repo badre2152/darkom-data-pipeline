@@ -5,11 +5,19 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Architecture](https://img.shields.io/badge/architecture-Medallion-orange)
 
-Pipeline de données complet qui transforme les annonces brutes de **Darkom.ma** en un Data Warehouse dans PostgreSQL, modélisé avec un Snowflake Schema et prêt pour Power BI.
+Projet Data Engineering et BI de bout en bout qui transforme des annonces immobilières brutes de **Darkom.ma** en données fiables, modélisées dans PostgreSQL et prêtes pour l'analyse dans Power BI.
 
----
+## 🎯 Résumé pour recruteurs
 
-## 🎯 Vue d'ensemble
+Ce projet démontre la construction d'un pipeline complet, depuis l'ingestion jusqu'à la couche analytique :
+
+* architecture Bronze, Silver et Gold avec orchestration Python
+* Data Warehouse PostgreSQL avec Snowflake Schema dans la couche Gold
+* nettoyage, feature engineering, contrôles de qualité et validation du Data Warehouse
+* journalisation des chargements et suivi des étapes du pipeline
+* couche BI avec Power BI, mesures DAX, transformations Power Query et export Gold prêt pour l'analyse
+
+## 🔄 Flux de données
 
 ```
 CSV Source (darkom_annonces_raw.csv)
@@ -22,8 +30,6 @@ CSV Source (darkom_annonces_raw.csv)
         ↓
 📊 Power BI Dashboard
 ```
-
----
 
 ## 🧱 Architecture
 
