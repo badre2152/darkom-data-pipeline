@@ -93,14 +93,7 @@ darkom-data-pipeline/
 │       ├── Analyse_Prix.png
 │       ├── Analyse_Geographique.png
 │       └── Tendances.png
-├── logs/                        # Logs par couche
-│   ├── pipeline.log
-│   ├── staging.log
-│   ├── clean.log
-│   ├── bi_schema.log
-│   ├── migrations.log
-│   ├── db.log
-│   └── validate.log
+├── logs/                        # Créé à l'exécution, fichiers .log ignorés par Git
 ├── notebook/
 │   └── Data_preparation_logic.ipynb
 ├── dax/                         # Mesures DAX Power BI
@@ -275,7 +268,7 @@ Transformations appliquées :
 - `dim_anomalies` contient uniquement `annonce_id`, `is_anomaly` et `detail_id` (FK)
 - `subdim_anomalie_detail` contient les 9 flags de détail (prix_outlier, surface_outlier, etc.), une combinaison unique de flags = une ligne
 - Crée les indexes sur toutes les FK de `fact_annonces`
-- Exporte `data/gold/bi/data_warehouse_ready.csv` (vue dénormalisée pour Power BI)
+- Génère localement `data/gold/bi/data_warehouse_ready.csv` comme vue dénormalisée pour Power BI. Ce fichier n'est pas versionné
 
 ---
 
@@ -286,7 +279,7 @@ Transformations appliquées :
 3. Serveur : `localhost:5432` | Base : `darkom_dwh`
 4. Importer les tables du schema `gold` :
    - `fact_annonces` + toutes les `dim_*` et `subdim_*`
-5. Alternativement : importer directement `data/gold/bi/data_warehouse_ready.csv`
+5. Alternativement : après exécution de la couche Gold, importer le fichier local généré `data/gold/bi/data_warehouse_ready.csv`
 
 ---
 
@@ -307,7 +300,7 @@ Vérifie :
 
 ## 📋 Logs
 
-Tous les logs sont écrits dans `logs/` :
+Les fichiers de log sont créés localement dans `logs/` au premier lancement. Ils sont ignorés par Git et ne sont donc pas présents après un clone neuf :
 
 ```
 logs/migrations.log   → Création des schemas
