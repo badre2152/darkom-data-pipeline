@@ -1,11 +1,11 @@
-# 🏠 Darkom.ma — Pipeline de Données Immobilières
+# 🏠 Darkom.ma: Pipeline de Données Immobilières
 
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![PostgreSQL](https://img.shields.io/badge/postgresql-16-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Architecture](https://img.shields.io/badge/architecture-Medallion-orange)
 
-Pipeline de données industriel complet qui transforme les annonces brutes de **Darkom.ma** en un Data Warehouse PostgreSQL utilisant un Snowflake Schema, prêt pour Power BI.
+Pipeline de données complet qui transforme les annonces brutes de **Darkom.ma** en un Data Warehouse dans PostgreSQL, modélisé avec un Snowflake Schema et prêt pour Power BI.
 
 ---
 
@@ -33,9 +33,9 @@ CSV Source (darkom_annonces_raw.csv)
 
 | Schema   | Rôle                                        |
 |----------|---------------------------------------------|
-| `bronze` | Données brutes — copie exacte du CSV        |
+| `bronze` | Données brutes, copie exacte du CSV         |
 | `silver` | Données nettoyées + features engineered     |
-| `gold`   | Snowflake Schema — tables DWH pour Power BI |
+| `gold`   | Snowflake Schema dans PostgreSQL pour Power BI |
 | `audit`  | Logs de chargement (`load_logs`)            |
 
 ### ⭐ Snowflake Schema (Gold)
@@ -232,19 +232,19 @@ make pipeline   # Recrée tout depuis le CSV
 
 ## 🔄 Détail des Couches
 
-### 🥉 Bronze — `src/staging/load_staging.py`
+### 🥉 Bronze: `src/staging/load_staging.py`
 
-- Vérifie si le CSV source est déjà dans `data/bronze/` — recopie uniquement si nécessaire
+- Vérifie si le CSV source est déjà dans `data/bronze/`, puis le recopie uniquement si nécessaire
 - Charge toutes les colonnes en `TEXT` dans `bronze.stg_annonces` (truncate + reload idempotent)
 - Enregistre un log dans `audit.load_logs`
 
-### 🥈 Silver — `src/clean/clean_data.py`
+### 🥈 Silver: `src/clean/clean_data.py`
 
 Transformations appliquées :
 
 | Étape | Traitement |
 |-------|------------|
-| Doublons | `drop_duplicates` — 8 lignes supprimées |
+| Doublons | `drop_duplicates`, 8 lignes supprimées |
 | Types | Conversion DATE, NUMERIC |
 | Villes | Normalisation + regex (`casa*` → `casablanca`) |
 | Quartiers | Imputation par mode (ville) |
@@ -255,7 +255,7 @@ Transformations appliquées :
 | Outliers | IQR × 1.5 sur prix, surface, chambres |
 | Anomalies | Logique métier (surface > 30 m² sans sdb) |
 
-> **Règle transaction** : seules les valeurs `vente` et `location` sont acceptées. Toute ligne avec un type de transaction indéterminé après imputation est retirée du dataset Silver — elle n'atteint pas Gold.
+> **Règle transaction** : seules les valeurs `vente` et `location` sont acceptées. Toute ligne avec un type de transaction indéterminé après imputation est retirée du dataset Silver, elle n'atteint pas Gold.
 
 **Features créées :**
 
@@ -264,16 +264,16 @@ Transformations appliquées :
 | `prix_par_m2` | prix ÷ surface |
 | `age_estime` | année courante − annee_construction (min 0) |
 | `categorie_prix` | Quantiles Q1/Q2/Q3 → economique / moyen / haut_standing / luxe |
-| `categorie_surface` | < 80 m² → petit, 80–150 → moyen, > 150 → grand |
+| `categorie_surface` | < 80 m² → petit, 80 à 150 → moyen, > 150 → grand |
 | `year`, `month`, `quarter`, `day` | Extrait de date_publication |
 | `is_anomaly`, `luxury`, flags outliers | Booléens de qualité |
 
-### 🥇 Gold — `src/warehouse/bi_schema.py`
+### 🥇 Gold: `src/warehouse/bi_schema.py`
 
-- Construit le Snowflake Schema dans le schema `gold`
+- Construit le Snowflake Schema dans PostgreSQL, au sein du schema `gold`
 - `dim_transaction` contient exactement 2 valeurs : `location` et `vente`
 - `dim_anomalies` contient uniquement `annonce_id`, `is_anomaly` et `detail_id` (FK)
-- `subdim_anomalie_detail` contient les 9 flags de détail (prix_outlier, surface_outlier, etc.) — une combinaison unique de flags = une ligne
+- `subdim_anomalie_detail` contient les 9 flags de détail (prix_outlier, surface_outlier, etc.), une combinaison unique de flags = une ligne
 - Crée les indexes sur toutes les FK de `fact_annonces`
 - Exporte `data/gold/bi/data_warehouse_ready.csv` (vue dénormalisée pour Power BI)
 
@@ -323,7 +323,7 @@ logs/validate.log     → Validation du Data Warehouse
 
 ## 👤 Auteur
 
-**BRAHIM BADRE** — Data Engineering & Analytics
+**BRAHIM BADRE**, Data Engineering & Analytics
 
 ---
 
