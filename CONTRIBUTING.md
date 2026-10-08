@@ -1,4 +1,4 @@
-# Guide de contribution — Darkom.ma Pipeline
+# Guide de contribution: Darkom.ma Data Pipeline
 
 ## Prérequis
 - Python 3.11+
@@ -28,7 +28,7 @@ make validate
 5. Ajouter la vérification FK dans `validate.py` si c'est une FK de `fact_annonces`
 
 ## Conventions
-- Logs : utiliser `get_logger("nom_couche")` — ne jamais utiliser `print()`
+- Logs : utiliser `get_logger("nom_couche")`: ne jamais utiliser `print()`
 - Toutes les erreurs bloquantes : lever une exception (le pipeline s'arrêtera via `sys.exit(1)`)
 - Nommage SQL : snake_case, préfixe par couche (`stg_`, `dim_`, `subdim_`, `fact_`)
-- Pas de secrets dans le code — toujours lire depuis `.env` via `os.getenv()`
+- Pas de secrets dans le code: toujours lire depuis `.env` via `os.getenv()`
