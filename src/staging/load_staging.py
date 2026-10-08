@@ -13,22 +13,22 @@ log = get_logger("staging")
 def load_staging(source_csv_path: str) -> int:
    
     log.info("═" * 60)
-    log.info(" BRONZE LAYER — Starting …")
+    log.info(" BRONZE LAYER: Starting …")
 
-    # ── 1. Copy raw CSV to data/bronze/ (read-only reference) ─
+    # 1. Copy raw CSV to data/bronze/ (read only reference)
     BRONZE_CSV.parent.mkdir(parents=True, exist_ok=True)
     if Path(source_csv_path).resolve() != BRONZE_CSV.resolve():
         shutil.copy2(source_csv_path, BRONZE_CSV)
         log.info(f"Raw CSV copied → {BRONZE_CSV}")
     else:
-        log.info("CSV already in bronze directory — skipping copy.")
+        log.info("CSV already in bronze directory: skipping copy.")
 
-    # ── 2. Read CSV (all columns as str to avoid type errors) ─
+    # 2. Read CSV (all columns as str to avoid type errors)
     log.info(f"Reading CSV from {source_csv_path} …")
     df = pd.read_csv(source_csv_path, dtype=str)
     log.info(f"CSV loaded : {len(df)} rows × {len(df.columns)} columns")
 
-    # ── 3. Load into bronze.stg_annonces ─────────────────────
+    # 3. Load into bronze.stg_annonces
     engine = get_engine(SCHEMA_BRONZE)
 
     with engine.begin() as conn:
@@ -45,14 +45,14 @@ def load_staging(source_csv_path: str) -> int:
     )
     log.info(f"Loaded {len(df)} rows → bronze.stg_annonces")
 
-    # ── 4. Log entry ──────────────────────────────────────────
+    # 4. Log entry
     with engine.begin() as conn:
         conn.execute(text("""
             INSERT INTO audit.load_logs (layer, table_name, rows_loaded, load_status, error_message)
             VALUES ('bronze', 'bronze.stg_annonces', :n, 'SUCCESS', NULL)
         """), {"n": len(df)})
 
-    log.info(" BRONZE LAYER — Done ✓")
+    log.info(" BRONZE LAYER: Done ✓")
     log.info("═" * 60)
     return len(df)
 
