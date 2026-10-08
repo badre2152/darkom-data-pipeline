@@ -16,14 +16,14 @@ Each pipeline run produces log files under `logs/`. Here is what to look for in 
 
 ## Common patterns to watch
 
-### transaction encore NaN après Silver — si le bug réapparaît
+### transaction encore NaN après Silver: si le bug réapparaît
 Si tu modifies la logique d'imputation et que des NaN réapparaissent, cherche dans `clean.log` :
 ```
 transaction distribution :
 vente      NNN
 location   NNN
 ```
-Si une ligne `nan NNN` apparaît dans ce bloc, c'est que `fillna(mode())` a échoué — vérifie que la série `transaction` contient au moins une valeur non-nulle avant l'appel à `mode()`.
+Si une ligne `nan NNN` apparaît dans ce bloc, c'est que `fillna(mode())` a échoué: vérifie que la série `transaction` contient au moins une valeur non-nulle avant l'appel à `mode()`.
 
 > **Note :** Dans les versions < 1.2.0, ce bug produisait `nan 10` dans ce log. Il est corrigé depuis.
 
