@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Architecture](https://img.shields.io/badge/architecture-Medallion-orange)
 
-Pipeline de données industriel complet qui transforme les annonces brutes de **Darkom.ma** en un Data Warehouse Snowflake Schema prêt pour Power BI.
+Pipeline de données industriel complet qui transforme les annonces brutes de **Darkom.ma** en un Data Warehouse PostgreSQL utilisant un Snowflake Schema, prêt pour Power BI.
 
 ---
 
