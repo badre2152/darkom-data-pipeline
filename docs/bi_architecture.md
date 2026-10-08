@@ -1,15 +1,15 @@
-# Architecture BI — Darkom.ma Dashboard
+# Architecture BI: Darkom.ma Dashboard
 
 ## Flux de données complet
 
 ```
 [darkom_annonces_raw.csv]
     ↓ load_staging.py
-[PostgreSQL — bronze.stg_annonces]
+[PostgreSQL: bronze.stg_annonces]
     ↓ clean_data.py
-[PostgreSQL — silver.annonces_clean]
+[PostgreSQL: silver.annonces_clean]
     ↓ bi_schema.py
-[PostgreSQL — gold (Snowflake Schema)]
+[PostgreSQL: gold (Snowflake Schema)]
     ├── fact_annonces
     ├── dim_date
     ├── dim_localisation → subdim_ville, subdim_quartier
@@ -18,7 +18,7 @@
     ├── dim_category
     └── dim_anomalies → subdim_anomalie_detail
     ↓ Power Query (nettoyage léger + colonnes calculées)
-[Modèle Power BI — Snowflake Schema]
+[Modèle Power BI: Snowflake Schema]
     ↓ DAX Measures
 [4 Dashboards Interactifs]
 ```
@@ -103,7 +103,7 @@ Valeurs : `vente` / `location`
 | Colonne | Type | Description |
 |---------|------|-------------|
 | anomalie_id | SERIAL | Clé primaire |
-| annonce_id | VARCHAR | UNIQUE — référence à fact_annonces |
+| annonce_id | VARCHAR | UNIQUE: référence à fact_annonces |
 | is_anomaly | BOOLEAN | TRUE si au moins un flag de détail est actif |
 | detail_id | INT | FK → subdim_anomalie_detail |
 
@@ -111,7 +111,7 @@ Valeurs : `vente` / `location`
 > `dim_anomalies` ne contient plus que `annonce_id`, `is_anomaly` et `detail_id`.
 
 ### subdim_anomalie_detail
-Chaque ligne représente une combinaison unique de flags — dédoublonnée.
+Chaque ligne représente une combinaison unique de flags: dédoublonnée.
 
 | Colonne | Type | Description |
 |---------|------|-------------|
