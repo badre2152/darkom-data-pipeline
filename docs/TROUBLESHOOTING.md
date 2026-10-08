@@ -5,19 +5,19 @@
 ### `ModuleNotFoundError: No module named 'src'`
 Run all commands from the project root (where `Makefile` lives), not from inside `src/`:
 ```bash
-cd jeury-brief
+cd darkom-data-pipeline
 python -m src.pipeline --csv data/bronze/darkom_annonces_raw.csv
 ```
 
 ### `could not connect to server: Connection refused`
 PostgreSQL is not running or credentials are wrong.
 1. Start PostgreSQL: `brew services start postgresql` (macOS) or `sudo service postgresql start` (Linux).
-2. Check your `.env` file — copy `.env.example` and fill in real values.
+2. Check your `.env` file: copy `.env.example` and fill in real values.
 3. Confirm the database exists: `psql -U postgres -c "\l" | grep darkom_dwh`.
 
 ### `ROOT_DIR` pointing to the wrong place
 This was a bug in the original project (hardcoded `/Users/mac/Desktop/…`).
-It is fixed — `config.py` now uses `Path(__file__).parent.parent`.
+It is fixed: `config.py` now uses `Path(__file__).parent.parent`.
 
 ## Pipeline failures
 
@@ -33,7 +33,7 @@ Check `clean.log` for the traceback. Common causes:
 ### `Gold FAILED` in pipeline.log
 Check `bi_schema.log`. Common causes:
 - Silver table is empty or missing a required column such as `prix_par_m2_broken` (regenerate Silver first).
-- Unique constraint violation in a sub-dimension table — usually means the pipeline was interrupted mid-run. Run `make clean-db` (drops bronze/silver/gold schemas) then `make pipeline` to restart cleanly.
+- Unique constraint violation in a sub-dimension table: usually means the pipeline was interrupted mid-run. Run `make clean-db` (drops bronze/silver/gold schemas) then `make pipeline` to restart cleanly.
 
 > **Note :** `make clean-db` supprime uniquement les schemas `bronze`, `silver` et `gold`. Le schema `audit` (et ses logs historiques dans `audit.load_logs`) n'est **pas** supprimé. Si vous souhaitez repartir de zéro complètement, supprimez manuellement le schema audit : `psql -d darkom_dwh -c "DROP SCHEMA IF EXISTS audit CASCADE"`.
 
