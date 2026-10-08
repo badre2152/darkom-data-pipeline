@@ -75,7 +75,7 @@ gold.fact_annonces
 ## 📁 Structure du Projet
 
 ```
-jeury-brief/
+darkom-data-pipeline/
 ├── data/
 │   ├── bronze/                  # CSV source (immuable)
 │   │   └── darkom_annonces_raw.csv
@@ -142,8 +142,8 @@ jeury-brief/
 ### 1. Cloner le dépôt
 
 ```bash
-git clone https://github.com/badre2152/test.git
-cd jeury-brief
+git clone https://github.com/badre2152/darkom-data-pipeline.git
+cd darkom-data-pipeline
 ```
 
 ### 2. Créer l'environnement virtuel
@@ -164,7 +164,7 @@ pip install -r requirements.txt
 
 ### 4. Configurer les variables d'environnement
 
-Copier `.env.example` en `.env` et remplir vos valeurs :
+Copier `.env.example` en `.env` puis remplacer la valeur `change_me_database_password` par votre mot de passe PostgreSQL :
 
 ```bash
 cp .env.example .env
@@ -175,7 +175,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=darkom_dwh
 DB_USER=postgres
-DB_PASSWORD=ton_mot_de_passe
+DB_PASSWORD=change_me_database_password
 ```
 
 ### 5. Créer la base de données
