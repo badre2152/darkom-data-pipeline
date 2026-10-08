@@ -13,11 +13,11 @@ log = get_logger("pipeline")
 
 def run_pipeline(csv_path: str):
     log.info("╔" + "═" * 58 + "╗")
-    log.info("║  DARKOM.MA — Full Pipeline  Bronze → Silver → Gold    ║")
+    log.info("║  DARKOM.MA: Full Pipeline  Bronze → Silver → Gold    ║")
     log.info("╚" + "═" * 58 + "╝")
     start = time.time()
 
-    # ──  Migrations ─────────────────────────────────────────
+    # Migrations
     t0 = time.time()
     try:
         run_migrations()
@@ -26,7 +26,7 @@ def run_pipeline(csv_path: str):
         sys.exit(1)
     log.info(f" Migrations done  [{time.time()-t0:.1f}s]")
 
-    # ──  Bronze ─────────────────────────────────────────────
+    # Bronze
     t0 = time.time()
     try:
         bronze_rows = load_staging(csv_path)
@@ -35,7 +35,7 @@ def run_pipeline(csv_path: str):
         sys.exit(1)
     log.info(f" Bronze done  [{time.time()-t0:.1f}s]  rows={bronze_rows}")
 
-    # ──  Silver ─────────────────────────────────────────────
+    # Silver
     t0 = time.time()
     try:
         silver_rows = clean_data()
@@ -44,7 +44,7 @@ def run_pipeline(csv_path: str):
         sys.exit(1)
     log.info(f" Silver done  [{time.time()-t0:.1f}s]  rows={silver_rows}")
 
-    # ──  Gold ───────────────────────────────────────────────
+    # Gold
     t0 = time.time()
     try:
         gold_rows = build_warehouse()
@@ -64,7 +64,7 @@ def run_pipeline(csv_path: str):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Darkom.ma — Data Pipeline")
+    parser = argparse.ArgumentParser(description="Darkom.ma: Data Pipeline")
     parser.add_argument(
         "--csv", required=True,
         help="Path to the raw CSV file (darkom_annonces.csv)"
