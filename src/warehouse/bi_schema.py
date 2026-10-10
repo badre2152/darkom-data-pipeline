@@ -20,6 +20,21 @@ def _drop_create(conn, ddl: str, name: str):
 # ─────────────────────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────────────────────
+def _validate_fact_rows(source: pd.DataFrame, fact: pd.DataFrame) -> None:
+    if source.empty:
+        raise ValueError("Gold build aborted: Silver input is empty")
+    if source["annonce_id"].isna().any():
+        raise ValueError("Gold build aborted: missing annonce_id in Silver input")
+    if source["annonce_id"].duplicated().any():
+        raise ValueError("Gold build aborted: duplicate annonce_id in Silver input")
+    if len(fact) != len(source):
+        raise ValueError(
+            f"Gold build aborted: expected {len(source)} fact rows, found {len(fact)}"
+        )
+    if fact["annonce_id"].isna().any() or fact["annonce_id"].duplicated().any():
+        raise ValueError("Gold build aborted: null or duplicate fact IDs")
+
+
 def build_warehouse() -> int:
     log.info("═" * 60)
     log.info(" GOLD LAYER — Starting …")
@@ -28,6 +43,10 @@ def build_warehouse() -> int:
     engine_silver = get_engine(SCHEMA_SILVER)
     df = pd.read_sql("SELECT * FROM silver.annonces_clean", engine_silver)
     log.info(f"Read {len(df)} rows from silver.annonces_clean")
+    if df.empty:
+        raise ValueError("Gold build aborted: Silver input is empty")
+    if df["annonce_id"].isna().any() or df["annonce_id"].duplicated().any():
+        raise ValueError("Gold build aborted: missing or duplicate annonce_id")
 
     
     df["prix_par_m2"] = df["prix_par_m2"].replace([np.inf, -np.inf], np.nan)
@@ -340,6 +359,7 @@ def build_warehouse() -> int:
     fact_final = fact[["annonce_id", "date_id", "localisation_id", "bien_id",
                         "transaction_id", "anomalie_id", "prix_category_id",
                         "prix", "surface", "prix_par_m2"]]
+    _validate_fact_rows(df, fact_final)
     fact_final.to_sql("fact_annonces", schema="gold", con=engine,
                       if_exists="append", index=False, chunksize=500)
     log.info(f"  gold.fact_annonces : {len(fact_final)} rows")
