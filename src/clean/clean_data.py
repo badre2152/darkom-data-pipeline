@@ -65,6 +65,34 @@ def _infer_missing_transactions(df: pd.DataFrame) -> pd.Series:
     return inferred
 
 
+def _impute_required_integers(df: pd.DataFrame) -> pd.DataFrame:
+    result = df.copy()
+    groups = ["ville", "type_bien"]
+    for column in ("nb_chambres", "nb_salles_bain", "etage"):
+        group_median = result.groupby(groups, observed=True)[column].transform("median")
+        global_median = result[column].median()
+        result[column] = result[column].fillna(group_median).fillna(global_median)
+
+    group_year = result.groupby(groups, observed=True)["annee_construction"].transform(
+        lambda values: values.mode().iloc[0] if not values.mode().empty else np.nan
+    )
+    global_years = result["annee_construction"].mode()
+    result["annee_construction"] = result["annee_construction"].fillna(group_year)
+    if not global_years.empty:
+        result["annee_construction"] = result["annee_construction"].fillna(global_years.iloc[0])
+
+    required = ["nb_chambres", "nb_salles_bain", "etage", "annee_construction"]
+    missing = result[required].isna().any(axis=1)
+    if missing.any():
+        log.warning("Dropping %s records with unresolved required numeric values", int(missing.sum()))
+        result = result.loc[~missing].copy()
+    if result.empty:
+        raise ValueError("No records with complete required numeric fields remain")
+    for column in required:
+        result[column] = result[column].astype(int)
+    return result
+
+
 def clean_data() -> int:
     log.info("═" * 60)
     log.info(" SILVER LAYER — Starting …")
@@ -152,23 +180,7 @@ def clean_data() -> int:
     df["transaction"] = df["transaction"].astype("category")
     log.info(f"transaction distribution :\n{df['transaction'].value_counts(dropna=False).to_string()}")
 
-    # ── 9. nb_chambres — median by (ville, type_bien) (cells 46-49) ─
-    median_chambres = df.groupby(["ville", "type_bien"])["nb_chambres"].transform("median")
-    df["nb_chambres"] = df["nb_chambres"].fillna(median_chambres).astype(int)
-
-    # ── 10. nb_salles_bain — FIX 3: cast to int (cells 52-56) ──
-    median_bain = df.groupby(["ville", "type_bien"])["nb_salles_bain"].transform("median")
-    df["nb_salles_bain"] = df["nb_salles_bain"].fillna(median_bain).astype(int)
-
-    # ── 11. etage — median by (ville, type_bien) (cells 58-61) ─
-    median_etage = df.groupby(["ville", "type_bien"])["etage"].transform("median")
-    df["etage"] = df["etage"].fillna(median_etage).astype(int)
-
-    # ── 12. annee_construction — mode by (ville, type_bien) (cells 63-66) ─
-    mode_annee = df.groupby(["ville", "type_bien"])["annee_construction"].transform(
-        lambda x: x.mode().iloc[0] if not x.mode().empty else np.nan
-    )
-    df["annee_construction"] = df["annee_construction"].fillna(mode_annee).astype(int)
+    df = _impute_required_integers(df)
 
     _log_nulls(df, "After imputation")
 
