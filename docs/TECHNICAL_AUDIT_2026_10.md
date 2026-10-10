@@ -14,9 +14,9 @@ This audit inspected the pipeline entry point, PostgreSQL connection helper, mig
 
 The same function accepted arbitrary `schema` values and put them into libpq connection options. A fixed allowlist now limits values to the five schemas used by this project.
 
-### High: non-atomic staging replacement remains open
+### High: staging replacement was non-atomic
 
-`src/staging/load_staging.py` truncates `bronze.stg_annonces` in one committed transaction and performs `DataFrame.to_sql` afterwards. If insertion fails, the previously loaded staging data have already been removed. A separate atomic-load fix and a PostgreSQL integration test are required before describing ingestion as failure-safe.
+`src/staging/load_staging.py` truncates `bronze.stg_annonces` in one committed transaction and performs `DataFrame.to_sql` afterwards. If insertion fails, the previously loaded staging data have already been removed. The staging TRUNCATE, insertion, and success audit entry now share one transaction. A PostgreSQL rollback regression test has been added, pending CI execution.
 
 ### Medium: logging and documentation cleanup remains open
 
@@ -24,11 +24,11 @@ Several modules contain decorative banner logs, overlong historical change notes
 
 ## Verification
 
-The DB contract tests use a mocked SQLAlchemy engine and do not connect to PostgreSQL. CI compilation cannot prove database transactions or Power BI report correctness. Full pipeline execution has not been confirmed.
+Connection URL tests mock SQLAlchemy. Staging rollback is now exercised against a PostgreSQL 16 CI service. A successful CI result is required; full Silver/Gold pipeline and Power BI report correctness remain unverified. Full pipeline execution has not been confirmed.
 
 ## Recommended next checks
 
 1. Pass CI on the audit branch.
-2. Make staging replacement atomic and verify rollback against PostgreSQL.
+2. Verify the transactional staging import and rollback test against PostgreSQL in CI.
 3. Validate Silver and Gold steps on a known synthetic fixture.
 4. Inspect reference DAX and report metadata before claiming current model performance.
