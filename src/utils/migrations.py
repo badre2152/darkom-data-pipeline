@@ -13,12 +13,12 @@ def run_migrations():
 
     with engine.begin() as conn:
 
-        # ── 1. Schemas ────────────────────────────────────────
+        # 1. Schemas
         for schema in ("bronze", "silver", "gold", "audit"):
             conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
             log.info(f"Schema '{schema}' — OK")
 
-        # ── 2. Staging table (bronze) ─────────────────────────
+        # 2. Staging table (bronze)
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS bronze.stg_annonces (
                 annonce_id          TEXT,
@@ -39,7 +39,7 @@ def run_migrations():
         """))
         log.info("Table bronze.stg_annonces — OK")
 
-        # ── 3. Load-logs table (audit schema) ────────────────
+        # 3. Load-logs table (audit schema)
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS audit.load_logs (
                 log_id        SERIAL PRIMARY KEY,

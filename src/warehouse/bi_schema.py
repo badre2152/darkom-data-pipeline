@@ -9,17 +9,13 @@ from src.utils.logger import get_logger
 log = get_logger("bi_schema")
 
 
-# ─────────────────────────────────────────────────────────────
 # DDL HELPERS
-# ─────────────────────────────────────────────────────────────
 def _drop_create(conn, ddl: str, name: str):
     conn.execute(text(ddl))
     log.info(f"Table {name} — created ✓")
 
 
-# ─────────────────────────────────────────────────────────────
 # MAIN
-# ─────────────────────────────────────────────────────────────
 def _validate_fact_rows(source: pd.DataFrame, fact: pd.DataFrame) -> None:
     if source.empty:
         raise ValueError("Gold build aborted: Silver input is empty")
@@ -39,7 +35,7 @@ def build_warehouse() -> int:
     log.info("═" * 60)
     log.info(" GOLD LAYER — Starting …")
 
-    # ── 0. Load from silver ───────────────────────────────────
+    # 0. Load from silver
     engine_silver = get_engine(SCHEMA_SILVER)
     df = pd.read_sql("SELECT * FROM silver.annonces_clean", engine_silver)
     log.info(f"Read {len(df)} rows from silver.annonces_clean")
@@ -58,9 +54,7 @@ def build_warehouse() -> int:
 
     with engine.begin() as conn:
 
-        # ════════════════════════════════════════════════════
         # DROP all tables in dependency order
-        # ════════════════════════════════════════════════════
         for t in [
             "gold.fact_annonces",
             "gold.dim_bien", "gold.dim_localisation", "gold.dim_date",
@@ -71,9 +65,7 @@ def build_warehouse() -> int:
         ]:
             conn.execute(text(f"DROP TABLE IF EXISTS {t} CASCADE"))
 
-        # ════════════════════════════════════════════════════
         # SUB-DIMENSIONS
-        # ════════════════════════════════════════════════════
 
         _drop_create(conn, """
             CREATE TABLE gold.subdim_ville (
@@ -108,9 +100,7 @@ def build_warehouse() -> int:
                 UNIQUE (nb_chambres, nb_salles_bain, etage)
             )""", "subdim_caracteristique")
 
-        # ════════════════════════════════════════════════════
         # MAIN DIMENSIONS
-        # ════════════════════════════════════════════════════
 
         _drop_create(conn, """
             CREATE TABLE gold.dim_date (
@@ -180,9 +170,7 @@ def build_warehouse() -> int:
                 UNIQUE (type_id, construction_id, caracteristique_id)
             )""", "dim_bien")
 
-        # ════════════════════════════════════════════════════
         # FACT TABLE
-        # ════════════════════════════════════════════════════
 
         _drop_create(conn, """
             CREATE TABLE gold.fact_annonces (
@@ -198,9 +186,7 @@ def build_warehouse() -> int:
                 prix_par_m2      DECIMAL(12,2)
             )""", "fact_annonces")
 
-        # ════════════════════════════════════════════════════════
         # POPULATE — using pandas for simplicity + safety
-        # ════════════════════════════════════════════════════════
 
         
         def insert_subdim(table, col, values):
@@ -211,19 +197,19 @@ def build_warehouse() -> int:
             log.info(f"  {table} : {len(result)} rows")
             return result
 
-        # ── subdim_ville ──────────────────────────────────────────
+        # subdim_ville
         villes = df["ville"].dropna().unique()
         sv = insert_subdim("gold.subdim_ville", "ville", villes)
 
-        # ── subdim_quartier ───────────────────────────────────────
+        # subdim_quartier
         quartiers = df["quartier"].fillna("unknown").unique()
         sq = insert_subdim("gold.subdim_quartier", "quartier", quartiers)
 
-        # ── subdim_type_bien ──────────────────────────────────────
+        # subdim_type_bien
         types = df["type_bien"].dropna().unique()
         st = insert_subdim("gold.subdim_type_bien", "type_bien", types)
 
-        # ── subdim_construction ───────────────────────────────────
+        # subdim_construction
         
         annees = df["annee_construction"].dropna().astype(int).unique()
         sc_df = pd.DataFrame({"annee_construction": sorted(annees)})
@@ -232,7 +218,7 @@ def build_warehouse() -> int:
         sc = pd.read_sql("SELECT * FROM gold.subdim_construction", conn)
         log.info(f"  gold.subdim_construction : {len(sc)} rows")
 
-        # ── subdim_caracteristique ────────────────────────────────
+        # subdim_caracteristique
         
         caract = df[["nb_chambres", "nb_salles_bain", "etage"]].drop_duplicates().dropna()
         caract = caract.astype(int)
@@ -241,7 +227,7 @@ def build_warehouse() -> int:
         sca = pd.read_sql("SELECT * FROM gold.subdim_caracteristique", conn)
         log.info(f"  gold.subdim_caracteristique : {len(sca)} rows")
 
-        # ── dim_date ──────────────────────────────────────────────
+        # dim_date
         dates = df[["date_publication"]].drop_duplicates().dropna().copy()
         dates["date_publication"] = pd.to_datetime(dates["date_publication"])
         dates["year"]    = dates["date_publication"].dt.year
@@ -254,7 +240,7 @@ def build_warehouse() -> int:
         dim_date["date_publication"] = pd.to_datetime(dim_date["date_publication"])
         log.info(f"  gold.dim_date : {len(dim_date)} rows")
 
-        # ── dim_localisation ──────────────────────────────────────
+        # dim_localisation
         loc = df[["ville", "quartier"]].fillna({"quartier": "unknown"}).drop_duplicates()
         loc = loc.merge(sv, on="ville").merge(sq, on="quartier")
         loc[["ville_id", "quartier_id"]].to_sql(
@@ -262,7 +248,7 @@ def build_warehouse() -> int:
         dim_loc = pd.read_sql("SELECT * FROM gold.dim_localisation", conn)
         log.info(f"  gold.dim_localisation : {len(dim_loc)} rows")
 
-        # ── dim_transaction ───────────────────────────────────────
+        # dim_transaction
         tr = df["transaction"].dropna().unique()
         tr = [t for t in tr if str(t).strip().lower() != "nan"]
         pd.DataFrame({"transaction": sorted(tr)}).to_sql(
@@ -270,7 +256,7 @@ def build_warehouse() -> int:
         dim_tr = pd.read_sql("SELECT * FROM gold.dim_transaction", conn)
         log.info(f"  gold.dim_transaction : {len(dim_tr)} rows")
 
-        # ── dim_category ──────────────────────────────────────────
+        # dim_category
         cat = df[["categorie_prix", "categorie_surface", "luxury"]].drop_duplicates().dropna(
             subset=["categorie_prix"])
         cat = cat.rename(columns={"categorie_prix": "prix_category", "categorie_surface": "surface_category"})
@@ -283,7 +269,7 @@ def build_warehouse() -> int:
         dim_cat = pd.read_sql("SELECT * FROM gold.dim_category", conn)
         log.info(f"  gold.dim_category : {len(dim_cat)} rows")
 
-        # ── subdim_anomalie_detail ────────────────────────────────
+        # subdim_anomalie_detail
         detail_flag_cols = ["prix_outlier", "surface_outlier", "nb_chambres_outlier",
                             "nb_salles_bain_outlier", "etage_outlier", "logic_anomaly",
                             "suspicious_price", "suspicious_surface", "prix_par_m2_broken"]
@@ -299,7 +285,7 @@ def build_warehouse() -> int:
         dim_detail = pd.read_sql("SELECT * FROM gold.subdim_anomalie_detail", conn)
         log.info(f"  gold.subdim_anomalie_detail : {len(dim_detail)} rows")
 
-        # ── dim_anomalies ─────────────────────────────────────────
+        # dim_anomalies
         anom = df[["annonce_id", "is_anomaly"] + detail_flag_cols].copy()
         anom["is_anomaly"] = anom["is_anomaly"].fillna(False).astype(bool)
         anom = anom.merge(dim_detail, on=detail_flag_cols, how="left")
@@ -310,7 +296,7 @@ def build_warehouse() -> int:
         log.info(f"  gold.dim_anomalies : {len(dim_anom)} rows  "
                  f"(anomalies={dim_anom['is_anomaly'].sum()})")
 
-        # ── dim_bien ──────────────────────────────────────────────
+        # dim_bien
         bien = df[["type_bien", "annee_construction", "nb_chambres",
                    "nb_salles_bain", "etage", "age_estime"]].drop_duplicates().dropna()
         bien = bien.astype({"annee_construction": int, "nb_chambres": int,
@@ -324,7 +310,7 @@ def build_warehouse() -> int:
         dim_bien = pd.read_sql("SELECT * FROM gold.dim_bien", conn)
         log.info(f"  gold.dim_bien : {len(dim_bien)} rows")
 
-        # ── fact_annonces ─────────────────────────────────────────
+        # fact_annonces
         fact = df[["annonce_id", "date_publication", "ville", "quartier",
                    "type_bien", "annee_construction", "nb_chambres", "nb_salles_bain",
                    "etage", "age_estime", "transaction", "is_anomaly",
@@ -363,7 +349,7 @@ def build_warehouse() -> int:
                           if_exists="append", index=False, chunksize=500)
         log.info(f"  gold.fact_annonces : {len(fact_final)} rows")
 
-        # ── Indexes ───────────────────────────────────────────────
+        # Indexes
         for idx_sql in [
                 "CREATE INDEX IF NOT EXISTS idx_fact_date         ON gold.fact_annonces(date_id)",
                 "CREATE INDEX IF NOT EXISTS idx_fact_loc          ON gold.fact_annonces(localisation_id)",
@@ -376,7 +362,7 @@ def build_warehouse() -> int:
             conn.execute(text(idx_sql))
         log.info("Indexes created ✓")
 
-    # ── Export data_warehouse_ready.csv ───────────────────────
+    # Export data_warehouse_ready.csv
     dw_ready = pd.read_sql("""
         SELECT
             f.annonce_id,
@@ -408,7 +394,7 @@ def build_warehouse() -> int:
     dw_ready.to_csv(GOLD_CSV, index=False)
     log.info(f"Exported → {GOLD_CSV}  ({len(dw_ready)} rows)")
 
-    # ── Log entry ──────────────────────────────────────────────
+    # Log entry
     engine_bronze = get_engine(SCHEMA_BRONZE)
     with engine_bronze.begin() as conn:
         conn.execute(text("""
