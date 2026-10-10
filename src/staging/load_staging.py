@@ -33,24 +33,20 @@ def load_staging(source_csv_path: str) -> int:
 
     with engine.begin() as conn:
         conn.execute(text("TRUNCATE TABLE bronze.stg_annonces"))
-        log.info("bronze.stg_annonces truncated (fresh load)")
-
-    df.to_sql(
-        name      = "stg_annonces",
-        schema    = SCHEMA_BRONZE,
-        con       = engine,
-        if_exists = "append",
-        index     = False,
-        chunksize = 500,
-    )
-    log.info(f"Loaded {len(df)} rows → bronze.stg_annonces")
-
-    # ── 4. Log entry ──────────────────────────────────────────
-    with engine.begin() as conn:
+        df.to_sql(
+            name="stg_annonces",
+            schema=SCHEMA_BRONZE,
+            con=conn,
+            if_exists="append",
+            index=False,
+            chunksize=500,
+        )
         conn.execute(text("""
             INSERT INTO audit.load_logs (layer, table_name, rows_loaded, load_status, error_message)
             VALUES ('bronze', 'bronze.stg_annonces', :n, 'SUCCESS', NULL)
         """), {"n": len(df)})
+
+    log.info("Loaded %s rows into bronze.stg_annonces", len(df))
 
     log.info(" BRONZE LAYER — Done ✓")
     log.info("═" * 60)
