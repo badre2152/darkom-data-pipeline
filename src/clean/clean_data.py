@@ -115,6 +115,16 @@ def _calculate_price_per_square_meter(df: pd.DataFrame) -> pd.Series:
     return ratio
 
 
+def _retain_supported_transactions(df: pd.DataFrame) -> pd.DataFrame:
+    result = df.loc[df["transaction"].isin(["vente", "location"])].copy()
+    excluded = len(df) - len(result)
+    if excluded:
+        log.warning("Excluded %s listings with unresolved transaction type", excluded)
+    if result.empty:
+        raise ValueError("No listings with a supported transaction type remain")
+    return result
+
+
 def clean_data() -> int:
     log.info("═" * 60)
     log.info(" SILVER LAYER — Starting …")
@@ -176,7 +186,7 @@ def clean_data() -> int:
     log.info(f"type_bien nulls after fill : {df['type_bien'].isnull().sum()}")
     log.info(f"type_bien distribution :\n{df['type_bien'].value_counts().to_string()}")
 
-    # ── 8. transaction — FIX: separate IQR per type, then impute ─
+    # Infer missing transaction labels only when price evidence is sufficient.
     original_null_mask = df["transaction"].isnull()
     df["transaction"] = df["transaction"].str.lower().str.strip()
 
@@ -184,16 +194,8 @@ def clean_data() -> int:
     inferred = _infer_missing_transactions(df)
     df.loc[original_null_mask, "transaction"] = inferred.loc[original_null_mask]
 
-    tx_mode = df["transaction"].mode()
-    if not tx_mode.empty:
-        df["transaction"] = df["transaction"].fillna(tx_mode.iloc[0])
-
     
-    before_drop = len(df)
-    df = df[df["transaction"].isin(["vente", "location"])].copy()
-    dropped = before_drop - len(df)
-    if dropped > 0:
-        log.info(f"transaction : {dropped} rows dropped (unknown transaction type)")
+    df = _retain_supported_transactions(df)
 
     df["transaction"] = df["transaction"].astype("category")
     log.info(f"transaction distribution :\n{df['transaction'].value_counts(dropna=False).to_string()}")
