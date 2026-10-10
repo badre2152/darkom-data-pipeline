@@ -35,6 +35,14 @@ def _validate_fact_rows(source: pd.DataFrame, fact: pd.DataFrame) -> None:
         raise ValueError("Gold build aborted: null or duplicate fact IDs")
 
 
+def _deduplicate_bien_dimensions(bien: pd.DataFrame) -> pd.DataFrame:
+    keys = ["type_id", "construction_id", "caracteristique_id"]
+    conflicting = bien.groupby(keys, dropna=False)["age_estime"].nunique(dropna=False)
+    if conflicting.gt(1).any():
+        raise ValueError("Gold dimension conflict: multiple ages for identical property attributes")
+    return bien.drop_duplicates(subset=keys).copy()
+
+
 def build_warehouse() -> int:
     log.info("═" * 60)
     log.info(" GOLD LAYER — Starting …")
@@ -319,6 +327,7 @@ def build_warehouse() -> int:
                 .merge(st, on="type_bien")
                 .merge(sc, on="annee_construction")
                 .merge(sca, on=["nb_chambres", "nb_salles_bain", "etage"]))
+        bien = _deduplicate_bien_dimensions(bien)
         bien[["type_id", "construction_id", "caracteristique_id", "age_estime"]].to_sql(
             "dim_bien", schema="gold", con=conn, if_exists="append", index=False)
         dim_bien = pd.read_sql("SELECT * FROM gold.dim_bien", conn)
