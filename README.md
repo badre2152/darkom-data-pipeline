@@ -323,6 +323,6 @@ logs/validate.log     → Validation du Data Warehouse
 
 ---
 
-## 📄 Licence
+##  Licence
 
 Ce projet est sous licence MIT. Voir [LICENSE/LICENSE.txt](LICENSE/LICENSE.txt).
