@@ -108,6 +108,13 @@ def _normalize_unknown_neighborhoods(neighborhoods: pd.Series) -> pd.Series:
     return cleaned.mask(cleaned.isna() | cleaned.eq(""), "unknown").astype(str)
 
 
+def _calculate_price_per_square_meter(df: pd.DataFrame) -> pd.Series:
+    valid = df["surface"].gt(0) & df["prix"].ge(0)
+    ratio = pd.Series(np.nan, index=df.index, dtype="float64")
+    ratio.loc[valid] = (df.loc[valid, "prix"] / df.loc[valid, "surface"]).round(2)
+    return ratio
+
+
 def clean_data() -> int:
     log.info("═" * 60)
     log.info(" SILVER LAYER — Starting …")
@@ -246,10 +253,10 @@ def clean_data() -> int:
     log.info(f"Anomalies : {df['is_anomaly'].sum()} / {len(df)}")
 
     # ── 17. Feature Engineering (cells 84-95) ─────────────────
-    df["prix_par_m2"]  = (df["prix"] / df["surface"]).round(2)
+    df["prix_par_m2"] = _calculate_price_per_square_meter(df)
 
     
-    df["prix_par_m2_broken"] = df["prix_par_m2"] < 100
+    df["prix_par_m2_broken"] = df["prix_par_m2"].isna() | df["prix_par_m2"].lt(100)
     broken_count = df["prix_par_m2_broken"].sum()
     log.info(f"prix_par_m2_broken : {broken_count} rows flagged (< 100 MAD/m²)")
 
