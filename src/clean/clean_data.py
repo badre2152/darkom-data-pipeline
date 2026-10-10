@@ -40,6 +40,15 @@ def _log_nulls(df: pd.DataFrame, step: str):
 # ─────────────────────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────────────────────
+def _replace_silver_table(df: pd.DataFrame, engine) -> None:
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS silver.annonces_clean CASCADE"))
+        df.to_sql(
+            name="annonces_clean", schema=SCHEMA_SILVER,
+            con=conn, if_exists="fail", index=False, chunksize=500,
+        )
+
+
 def clean_data() -> int:
     log.info("═" * 60)
     log.info(" SILVER LAYER — Starting …")
@@ -261,13 +270,7 @@ def clean_data() -> int:
         df_pg[col] = df_pg[col].astype(str)
 
     engine_silver = get_engine(SCHEMA_SILVER)
-    with engine_silver.begin() as conn:
-        conn.execute(text("DROP TABLE IF EXISTS silver.annonces_clean CASCADE"))
-
-    df_pg.to_sql(
-        name="annonces_clean", schema=SCHEMA_SILVER,
-        con=engine_silver, if_exists="replace", index=False, chunksize=500,
-    )
+    _replace_silver_table(df_pg, engine_silver)
     log.info(f"Loaded {len(df_pg)} rows → silver.annonces_clean")
 
     # ── 21. Log entry ──────────────────────────────────────────
