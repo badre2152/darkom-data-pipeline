@@ -49,6 +49,22 @@ def _replace_silver_table(df: pd.DataFrame, engine) -> None:
         )
 
 
+def _infer_missing_transactions(df: pd.DataFrame) -> pd.Series:
+    transactions = df["transaction"].str.lower().str.strip()
+    known = df.loc[transactions.isin(["vente", "location"])]
+    vente_q40 = known.loc[transactions == "vente", "prix"].quantile(0.4)
+    location_q60 = known.loc[transactions == "location", "prix"].quantile(0.6)
+
+    inferred = pd.Series(pd.NA, index=df.index, dtype="object")
+    if pd.notna(location_q60):
+        inferred.loc[df["prix"] <= location_q60 * 0.5] = "location"
+    if pd.notna(vente_q40):
+        inferred.loc[
+            inferred.isna() & (df["prix"] >= vente_q40 * 2)
+        ] = "vente"
+    return inferred
+
+
 def clean_data() -> int:
     log.info("═" * 60)
     log.info(" SILVER LAYER — Starting …")
@@ -119,20 +135,9 @@ def clean_data() -> int:
     df["transaction"] = df["transaction"].str.lower().str.strip()
 
     
-    known = df.loc[~original_null_mask]
-    vente_q40    = known.loc[known["transaction"] == "vente",    "prix"].quantile(0.4)
-    location_q60 = known.loc[known["transaction"] == "location", "prix"].quantile(0.6)
+    inferred = _infer_missing_transactions(df)
+    df.loc[original_null_mask, "transaction"] = inferred.loc[original_null_mask]
 
-    
-    imputed = np.where(
-        df["prix"] <= location_q60 * 0.5, "location",
-        np.where(df["prix"] >= vente_q40 * 2, "vente", np.nan),
-    )
-    df.loc[original_null_mask, "transaction"] = (
-        pd.Series(imputed, index=df.index).loc[original_null_mask]
-    )
-
-    
     tx_mode = df["transaction"].mode()
     if not tx_mode.empty:
         df["transaction"] = df["transaction"].fillna(tx_mode.iloc[0])
