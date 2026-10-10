@@ -103,6 +103,11 @@ def _remove_missing_publication_dates(df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
+def _normalize_unknown_neighborhoods(neighborhoods: pd.Series) -> pd.Series:
+    cleaned = neighborhoods.astype("string").str.strip()
+    return cleaned.mask(cleaned.isna() | cleaned.eq(""), "unknown").astype(str)
+
+
 def clean_data() -> int:
     log.info("═" * 60)
     log.info(" SILVER LAYER — Starting …")
@@ -111,6 +116,7 @@ def clean_data() -> int:
     engine_bronze = get_engine(SCHEMA_BRONZE)
     df = pd.read_sql("SELECT * FROM bronze.stg_annonces", engine_bronze)
     log.info(f"Read {len(df)} rows from bronze.stg_annonces")
+    source_rows = len(df)
 
     # ── 1. Drop staging metadata column ──────────────────────
     df.drop(columns=["_loaded_at"], errors="ignore", inplace=True)
@@ -126,7 +132,7 @@ def clean_data() -> int:
         df[col] = pd.to_numeric(df[col], errors="coerce")
     log.info("Types corrected")
 
-    # ── 4. date_publication — ffill + bfill (cell 12) ─────────
+    # Publication dates are not inferred from unrelated listings.
     df = _remove_missing_publication_dates(df)
 
 
@@ -148,14 +154,9 @@ def clean_data() -> int:
     df["ville"] = df["ville"].replace(to_replace=r".*casa.*", value="casablanca", regex=True)
     log.info(f"Villes standardized : {sorted(df['ville'].unique().tolist())}")
 
-    # ── 6. Quartier — impute mode by ville (cells 24-26) ──────
-    ville_quartier_map = (
-        df.groupby("ville")["quartier"]
-        .agg(lambda x: x.mode().iloc[0] if not x.mode().empty else "unknown")
-        .to_dict()
-    )
-    df["quartier"] = df["quartier"].fillna(df["ville"].map(ville_quartier_map))
-    log.info(f"quartier nulls after fill : {df['quartier'].isnull().sum()}")
+    # Unknown neighborhoods remain explicitly unknown.
+    df["quartier"] = _normalize_unknown_neighborhoods(df["quartier"])
+    log.info("Quartiers marked unknown: %s", int(df["quartier"].eq("unknown").sum()))
 
     # ── 7. type_bien — lower + deduce from titre (cells 30-33) ─
     df["type_bien"] = df["type_bien"].str.lower().str.strip()
@@ -299,6 +300,8 @@ def clean_data() -> int:
     engine_silver = get_engine(SCHEMA_SILVER)
     _replace_silver_table(df_pg, engine_silver)
     log.info(f"Loaded {len(df_pg)} rows → silver.annonces_clean")
+    log.info("Silver row retention: input=%s output=%s excluded=%s",
+             source_rows, len(df_pg), source_rows - len(df_pg))
 
     # ── 21. Log entry ──────────────────────────────────────────
     engine_bronze = get_engine(SCHEMA_BRONZE)
