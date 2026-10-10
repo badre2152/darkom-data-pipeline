@@ -93,6 +93,16 @@ def _impute_required_integers(df: pd.DataFrame) -> pd.DataFrame:
     return result
 
 
+def _remove_missing_publication_dates(df: pd.DataFrame) -> pd.DataFrame:
+    missing = df["date_publication"].isna()
+    if missing.any():
+        log.warning("Dropping %s listings without publication dates", int(missing.sum()))
+    result = df.loc[~missing].copy()
+    if result.empty:
+        raise ValueError("No listings with valid publication dates remain")
+    return result
+
+
 def clean_data() -> int:
     log.info("═" * 60)
     log.info(" SILVER LAYER — Starting …")
@@ -117,8 +127,8 @@ def clean_data() -> int:
     log.info("Types corrected")
 
     # ── 4. date_publication — ffill + bfill (cell 12) ─────────
-    df["date_publication"] = df["date_publication"].ffill().bfill()
-    log.info("date_publication : ffill+bfill applied")
+    df = _remove_missing_publication_dates(df)
+
 
     # ── 5. Ville — normalize (cells 16-19) ───────────────────
     df["ville"] = df["ville"].str.lower().str.strip().apply(_remove_accents)
