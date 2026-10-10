@@ -115,6 +115,16 @@ def _calculate_price_per_square_meter(df: pd.DataFrame) -> pd.Series:
     return ratio
 
 
+def _retain_supported_transactions(df: pd.DataFrame) -> pd.DataFrame:
+    result = df.loc[df["transaction"].isin(["vente", "location"])].copy()
+    excluded = len(df) - len(result)
+    if excluded:
+        log.warning("Excluded %s listings with unresolved transaction type", excluded)
+    if result.empty:
+        raise ValueError("No listings with a supported transaction type remain")
+    return result
+
+
 def clean_data() -> int:
     log.info("═" * 60)
     log.info(" SILVER LAYER — Starting …")
@@ -185,13 +195,7 @@ def clean_data() -> int:
     df.loc[original_null_mask, "transaction"] = inferred.loc[original_null_mask]
 
     
-    before_drop = len(df)
-    df = df[df["transaction"].isin(["vente", "location"])].copy()
-    dropped = before_drop - len(df)
-    if dropped > 0:
-        log.warning("Excluded %s listings with unresolved transaction type", dropped)
-    if df.empty:
-        raise ValueError("No listings with a supported transaction type remain")
+    df = _retain_supported_transactions(df)
 
     df["transaction"] = df["transaction"].astype("category")
     log.info(f"transaction distribution :\n{df['transaction'].value_counts(dropna=False).to_string()}")
