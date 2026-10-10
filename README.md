@@ -1,4 +1,4 @@
-# 🏠 Darkom.ma — Pipeline de Données Immobilières
+#  Darkom.ma — Pipeline de Données Immobilières
 
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![PostgreSQL](https://img.shields.io/badge/postgresql-16-blue)
@@ -9,7 +9,7 @@ Pipeline de données industriel complet qui transforme les annonces brutes de **
 
 ---
 
-## 🎯 Vue d'ensemble
+##  Vue d'ensemble
 
 ```
 CSV Source (darkom_annonces_raw.csv)
@@ -20,12 +20,12 @@ CSV Source (darkom_annonces_raw.csv)
         ↓
 🥇 Gold Layer    →  gold.* (Snowflake Schema)  (DWH optimisé Power BI)
         ↓
-📊 Power BI Dashboard
+ Power BI Dashboard
 ```
 
 ---
 
-## 🧱 Architecture
+##  Architecture
 
 ![Architecture](docs/architecturemok.png)
 
@@ -38,7 +38,7 @@ CSV Source (darkom_annonces_raw.csv)
 | `gold`   | Snowflake Schema — tables DWH pour Power BI |
 | `audit`  | Logs de chargement (`load_logs`)            |
 
-### ⭐ Snowflake Schema (Gold)
+###  Snowflake Schema (Gold)
 
 ```
 gold.fact_annonces
@@ -59,7 +59,7 @@ gold.fact_annonces
 
 ---
 
-## 🛠️ Stack Technique
+##  Stack Technique
 
 | Outil          | Rôle                           |
 |----------------|--------------------------------|
@@ -72,7 +72,7 @@ gold.fact_annonces
 
 ---
 
-## 📁 Structure du Projet
+##  Structure du Projet
 
 ```
 jeury-brief/
@@ -137,7 +137,7 @@ jeury-brief/
 
 ---
 
-## ⚙️ Installation & Configuration
+##  Installation & Configuration
 
 ### 1. Cloner le dépôt
 
@@ -197,7 +197,7 @@ GRANT ALL ON SCHEMA public TO darkom_user;
 
 ---
 
-## 🚀 Lancer le Pipeline
+##  Lancer le Pipeline
 
 ### Pipeline complet (recommandé)
 
@@ -226,7 +226,7 @@ make pipeline   # Recrée tout depuis le CSV
 
 ---
 
-## 🔄 Détail des Couches
+##  Détail des Couches
 
 ### 🥉 Bronze — `src/staging/load_staging.py`
 
@@ -275,7 +275,7 @@ Transformations appliquées :
 
 ---
 
-## 📊 Connexion Power BI
+##  Connexion Power BI
 
 1. Ouvrir Power BI Desktop
 2. **Obtenir les données** → **PostgreSQL**
@@ -286,7 +286,7 @@ Transformations appliquées :
 
 ---
 
-## ✅ Validation
+##  Validation
 
 ```bash
 make validate
@@ -301,7 +301,7 @@ Vérifie :
 
 ---
 
-## 📋 Logs
+##  Logs
 
 Tous les logs sont écrits dans `logs/` :
 
@@ -317,7 +317,7 @@ logs/validate.log     → Validation du Data Warehouse
 
 ---
 
-## 👤 Auteur
+##  Auteur
 
 **BRAHIM BADRE** — Data Engineering & Analytics
 
