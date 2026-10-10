@@ -198,185 +198,183 @@ def build_warehouse() -> int:
                 prix_par_m2      DECIMAL(12,2)
             )""", "fact_annonces")
 
-    # ════════════════════════════════════════════════════════
-    # POPULATE — using pandas for simplicity + safety
-    # ════════════════════════════════════════════════════════
+        # ════════════════════════════════════════════════════════
+        # POPULATE — using pandas for simplicity + safety
+        # ════════════════════════════════════════════════════════
 
-    
-    def insert_subdim(table, col, values):
-        rows = pd.DataFrame({col: sorted(values)})
-        with engine.begin() as _conn:
-            rows.to_sql(table.split(".")[1], schema="gold", con=_conn,
+        
+        def insert_subdim(table, col, values):
+            rows = pd.DataFrame({col: sorted(values)})
+            rows.to_sql(table.split(".")[1], schema="gold", con=conn,
                         if_exists="append", index=False)
-        result = pd.read_sql(f"SELECT * FROM {table}", engine)
-        log.info(f"  {table} : {len(result)} rows")
-        return result
+            result = pd.read_sql(f"SELECT * FROM {table}", conn)
+            log.info(f"  {table} : {len(result)} rows")
+            return result
 
-    # ── subdim_ville ──────────────────────────────────────────
-    villes = df["ville"].dropna().unique()
-    sv = insert_subdim("gold.subdim_ville", "ville", villes)
+        # ── subdim_ville ──────────────────────────────────────────
+        villes = df["ville"].dropna().unique()
+        sv = insert_subdim("gold.subdim_ville", "ville", villes)
 
-    # ── subdim_quartier ───────────────────────────────────────
-    quartiers = df["quartier"].fillna("unknown").unique()
-    sq = insert_subdim("gold.subdim_quartier", "quartier", quartiers)
+        # ── subdim_quartier ───────────────────────────────────────
+        quartiers = df["quartier"].fillna("unknown").unique()
+        sq = insert_subdim("gold.subdim_quartier", "quartier", quartiers)
 
-    # ── subdim_type_bien ──────────────────────────────────────
-    types = df["type_bien"].dropna().unique()
-    st = insert_subdim("gold.subdim_type_bien", "type_bien", types)
+        # ── subdim_type_bien ──────────────────────────────────────
+        types = df["type_bien"].dropna().unique()
+        st = insert_subdim("gold.subdim_type_bien", "type_bien", types)
 
-    # ── subdim_construction ───────────────────────────────────
-    
-    annees = df["annee_construction"].dropna().astype(int).unique()
-    sc_df = pd.DataFrame({"annee_construction": sorted(annees)})
-    sc_df.to_sql("subdim_construction", schema="gold", con=engine,
-                 if_exists="append", index=False)
-    sc = pd.read_sql("SELECT * FROM gold.subdim_construction", engine)
-    log.info(f"  gold.subdim_construction : {len(sc)} rows")
+        # ── subdim_construction ───────────────────────────────────
+        
+        annees = df["annee_construction"].dropna().astype(int).unique()
+        sc_df = pd.DataFrame({"annee_construction": sorted(annees)})
+        sc_df.to_sql("subdim_construction", schema="gold", con=conn,
+                     if_exists="append", index=False)
+        sc = pd.read_sql("SELECT * FROM gold.subdim_construction", conn)
+        log.info(f"  gold.subdim_construction : {len(sc)} rows")
 
-    # ── subdim_caracteristique ────────────────────────────────
-    
-    caract = df[["nb_chambres", "nb_salles_bain", "etage"]].drop_duplicates().dropna()
-    caract = caract.astype(int)
-    caract.to_sql("subdim_caracteristique", schema="gold", con=engine,
-                  if_exists="append", index=False)
-    sca = pd.read_sql("SELECT * FROM gold.subdim_caracteristique", engine)
-    log.info(f"  gold.subdim_caracteristique : {len(sca)} rows")
+        # ── subdim_caracteristique ────────────────────────────────
+        
+        caract = df[["nb_chambres", "nb_salles_bain", "etage"]].drop_duplicates().dropna()
+        caract = caract.astype(int)
+        caract.to_sql("subdim_caracteristique", schema="gold", con=conn,
+                      if_exists="append", index=False)
+        sca = pd.read_sql("SELECT * FROM gold.subdim_caracteristique", conn)
+        log.info(f"  gold.subdim_caracteristique : {len(sca)} rows")
 
-    # ── dim_date ──────────────────────────────────────────────
-    dates = df[["date_publication"]].drop_duplicates().dropna().copy()
-    dates["date_publication"] = pd.to_datetime(dates["date_publication"])
-    dates["year"]    = dates["date_publication"].dt.year
-    dates["quarter"] = dates["date_publication"].dt.quarter
-    dates["month"]   = dates["date_publication"].dt.month
-    dates["day"]     = dates["date_publication"].dt.day
-    dates.to_sql("dim_date", schema="gold", con=engine,
-                 if_exists="append", index=False)
-    dim_date = pd.read_sql("SELECT * FROM gold.dim_date", engine)
-    dim_date["date_publication"] = pd.to_datetime(dim_date["date_publication"])
-    log.info(f"  gold.dim_date : {len(dim_date)} rows")
+        # ── dim_date ──────────────────────────────────────────────
+        dates = df[["date_publication"]].drop_duplicates().dropna().copy()
+        dates["date_publication"] = pd.to_datetime(dates["date_publication"])
+        dates["year"]    = dates["date_publication"].dt.year
+        dates["quarter"] = dates["date_publication"].dt.quarter
+        dates["month"]   = dates["date_publication"].dt.month
+        dates["day"]     = dates["date_publication"].dt.day
+        dates.to_sql("dim_date", schema="gold", con=conn,
+                     if_exists="append", index=False)
+        dim_date = pd.read_sql("SELECT * FROM gold.dim_date", conn)
+        dim_date["date_publication"] = pd.to_datetime(dim_date["date_publication"])
+        log.info(f"  gold.dim_date : {len(dim_date)} rows")
 
-    # ── dim_localisation ──────────────────────────────────────
-    loc = df[["ville", "quartier"]].fillna({"quartier": "unknown"}).drop_duplicates()
-    loc = loc.merge(sv, on="ville").merge(sq, on="quartier")
-    loc[["ville_id", "quartier_id"]].to_sql(
-        "dim_localisation", schema="gold", con=engine, if_exists="append", index=False)
-    dim_loc = pd.read_sql("SELECT * FROM gold.dim_localisation", engine)
-    log.info(f"  gold.dim_localisation : {len(dim_loc)} rows")
+        # ── dim_localisation ──────────────────────────────────────
+        loc = df[["ville", "quartier"]].fillna({"quartier": "unknown"}).drop_duplicates()
+        loc = loc.merge(sv, on="ville").merge(sq, on="quartier")
+        loc[["ville_id", "quartier_id"]].to_sql(
+            "dim_localisation", schema="gold", con=conn, if_exists="append", index=False)
+        dim_loc = pd.read_sql("SELECT * FROM gold.dim_localisation", conn)
+        log.info(f"  gold.dim_localisation : {len(dim_loc)} rows")
 
-    # ── dim_transaction ───────────────────────────────────────
-    tr = df["transaction"].dropna().unique()
-    tr = [t for t in tr if str(t).strip().lower() != "nan"]
-    pd.DataFrame({"transaction": sorted(tr)}).to_sql(
-        "dim_transaction", schema="gold", con=engine, if_exists="append", index=False)
-    dim_tr = pd.read_sql("SELECT * FROM gold.dim_transaction", engine)
-    log.info(f"  gold.dim_transaction : {len(dim_tr)} rows")
+        # ── dim_transaction ───────────────────────────────────────
+        tr = df["transaction"].dropna().unique()
+        tr = [t for t in tr if str(t).strip().lower() != "nan"]
+        pd.DataFrame({"transaction": sorted(tr)}).to_sql(
+            "dim_transaction", schema="gold", con=conn, if_exists="append", index=False)
+        dim_tr = pd.read_sql("SELECT * FROM gold.dim_transaction", conn)
+        log.info(f"  gold.dim_transaction : {len(dim_tr)} rows")
 
-    # ── dim_category ──────────────────────────────────────────
-    cat = df[["categorie_prix", "categorie_surface", "luxury"]].drop_duplicates().dropna(
-        subset=["categorie_prix"])
-    cat = cat.rename(columns={"categorie_prix": "prix_category", "categorie_surface": "surface_category"})
-    # Dédoublonnage sur la clé unique (prix_category, surface_category) — on garde luxury=True en priorité
-    cat = (cat
-           .sort_values("luxury", ascending=False)          # True avant False
-           .drop_duplicates(subset=["prix_category", "surface_category"])
-           .reset_index(drop=True))
-    cat.to_sql("dim_category", schema="gold", con=engine, if_exists="append", index=False)
-    dim_cat = pd.read_sql("SELECT * FROM gold.dim_category", engine)
-    log.info(f"  gold.dim_category : {len(dim_cat)} rows")
+        # ── dim_category ──────────────────────────────────────────
+        cat = df[["categorie_prix", "categorie_surface", "luxury"]].drop_duplicates().dropna(
+            subset=["categorie_prix"])
+        cat = cat.rename(columns={"categorie_prix": "prix_category", "categorie_surface": "surface_category"})
+        # Dédoublonnage sur la clé unique (prix_category, surface_category) — on garde luxury=True en priorité
+        cat = (cat
+               .sort_values("luxury", ascending=False)          # True avant False
+               .drop_duplicates(subset=["prix_category", "surface_category"])
+               .reset_index(drop=True))
+        cat.to_sql("dim_category", schema="gold", con=conn, if_exists="append", index=False)
+        dim_cat = pd.read_sql("SELECT * FROM gold.dim_category", conn)
+        log.info(f"  gold.dim_category : {len(dim_cat)} rows")
 
-    # ── subdim_anomalie_detail ────────────────────────────────
-    detail_flag_cols = ["prix_outlier", "surface_outlier", "nb_chambres_outlier",
-                        "nb_salles_bain_outlier", "etage_outlier", "logic_anomaly",
-                        "suspicious_price", "suspicious_surface", "prix_par_m2_broken"]
-    for col in detail_flag_cols:
-        if col not in df.columns:
-            df[col] = False
-    for col in detail_flag_cols:
-        df[col] = df[col].fillna(False).astype(bool)
+        # ── subdim_anomalie_detail ────────────────────────────────
+        detail_flag_cols = ["prix_outlier", "surface_outlier", "nb_chambres_outlier",
+                            "nb_salles_bain_outlier", "etage_outlier", "logic_anomaly",
+                            "suspicious_price", "suspicious_surface", "prix_par_m2_broken"]
+        for col in detail_flag_cols:
+            if col not in df.columns:
+                df[col] = False
+        for col in detail_flag_cols:
+            df[col] = df[col].fillna(False).astype(bool)
 
-    detail_unique = df[detail_flag_cols].drop_duplicates().copy()
-    detail_unique.to_sql("subdim_anomalie_detail", schema="gold", con=engine,
-                         if_exists="append", index=False)
-    dim_detail = pd.read_sql("SELECT * FROM gold.subdim_anomalie_detail", engine)
-    log.info(f"  gold.subdim_anomalie_detail : {len(dim_detail)} rows")
+        detail_unique = df[detail_flag_cols].drop_duplicates().copy()
+        detail_unique.to_sql("subdim_anomalie_detail", schema="gold", con=conn,
+                             if_exists="append", index=False)
+        dim_detail = pd.read_sql("SELECT * FROM gold.subdim_anomalie_detail", conn)
+        log.info(f"  gold.subdim_anomalie_detail : {len(dim_detail)} rows")
 
-    # ── dim_anomalies ─────────────────────────────────────────
-    anom = df[["annonce_id", "is_anomaly"] + detail_flag_cols].copy()
-    anom["is_anomaly"] = anom["is_anomaly"].fillna(False).astype(bool)
-    anom = anom.merge(dim_detail, on=detail_flag_cols, how="left")
-    anom = anom[["annonce_id", "is_anomaly", "detail_id"]]
-    anom.to_sql("dim_anomalies", schema="gold", con=engine,
-                if_exists="append", index=False)
-    dim_anom = pd.read_sql("SELECT * FROM gold.dim_anomalies", engine)
-    log.info(f"  gold.dim_anomalies : {len(dim_anom)} rows  "
-             f"(anomalies={dim_anom['is_anomaly'].sum()})")
+        # ── dim_anomalies ─────────────────────────────────────────
+        anom = df[["annonce_id", "is_anomaly"] + detail_flag_cols].copy()
+        anom["is_anomaly"] = anom["is_anomaly"].fillna(False).astype(bool)
+        anom = anom.merge(dim_detail, on=detail_flag_cols, how="left")
+        anom = anom[["annonce_id", "is_anomaly", "detail_id"]]
+        anom.to_sql("dim_anomalies", schema="gold", con=conn,
+                    if_exists="append", index=False)
+        dim_anom = pd.read_sql("SELECT * FROM gold.dim_anomalies", conn)
+        log.info(f"  gold.dim_anomalies : {len(dim_anom)} rows  "
+                 f"(anomalies={dim_anom['is_anomaly'].sum()})")
 
-    # ── dim_bien ──────────────────────────────────────────────
-    bien = df[["type_bien", "annee_construction", "nb_chambres",
-               "nb_salles_bain", "etage", "age_estime"]].drop_duplicates().dropna()
-    bien = bien.astype({"annee_construction": int, "nb_chambres": int,
-                        "nb_salles_bain": int, "etage": int, "age_estime": int})
-    bien = (bien
-            .merge(st, on="type_bien")
-            .merge(sc, on="annee_construction")
-            .merge(sca, on=["nb_chambres", "nb_salles_bain", "etage"]))
-    bien[["type_id", "construction_id", "caracteristique_id", "age_estime"]].to_sql(
-        "dim_bien", schema="gold", con=engine, if_exists="append", index=False)
-    dim_bien = pd.read_sql("SELECT * FROM gold.dim_bien", engine)
-    log.info(f"  gold.dim_bien : {len(dim_bien)} rows")
+        # ── dim_bien ──────────────────────────────────────────────
+        bien = df[["type_bien", "annee_construction", "nb_chambres",
+                   "nb_salles_bain", "etage", "age_estime"]].drop_duplicates().dropna()
+        bien = bien.astype({"annee_construction": int, "nb_chambres": int,
+                            "nb_salles_bain": int, "etage": int, "age_estime": int})
+        bien = (bien
+                .merge(st, on="type_bien")
+                .merge(sc, on="annee_construction")
+                .merge(sca, on=["nb_chambres", "nb_salles_bain", "etage"]))
+        bien[["type_id", "construction_id", "caracteristique_id", "age_estime"]].to_sql(
+            "dim_bien", schema="gold", con=conn, if_exists="append", index=False)
+        dim_bien = pd.read_sql("SELECT * FROM gold.dim_bien", conn)
+        log.info(f"  gold.dim_bien : {len(dim_bien)} rows")
 
-    # ── fact_annonces ─────────────────────────────────────────
-    fact = df[["annonce_id", "date_publication", "ville", "quartier",
-               "type_bien", "annee_construction", "nb_chambres", "nb_salles_bain",
-               "etage", "age_estime", "transaction", "is_anomaly",
-               "categorie_prix", "categorie_surface", "luxury",
-               "prix", "surface", "prix_par_m2"]].copy()
+        # ── fact_annonces ─────────────────────────────────────────
+        fact = df[["annonce_id", "date_publication", "ville", "quartier",
+                   "type_bien", "annee_construction", "nb_chambres", "nb_salles_bain",
+                   "etage", "age_estime", "transaction", "is_anomaly",
+                   "categorie_prix", "categorie_surface", "luxury",
+                   "prix", "surface", "prix_par_m2"]].copy()
 
-    fact["date_publication"] = pd.to_datetime(fact["date_publication"])
-    fact["quartier"]         = fact["quartier"].fillna("unknown")
-    fact = fact.dropna(subset=["annonce_id", "date_publication",
-                               "categorie_prix", "categorie_surface"])
-    fact = fact.astype({"annee_construction": int, "nb_chambres": int,
-                        "nb_salles_bain": int, "etage": int, "age_estime": int})
+        fact["date_publication"] = pd.to_datetime(fact["date_publication"])
+        fact["quartier"]         = fact["quartier"].fillna("unknown")
+        fact = fact.dropna(subset=["annonce_id", "date_publication",
+                                   "categorie_prix", "categorie_surface"])
+        fact = fact.astype({"annee_construction": int, "nb_chambres": int,
+                            "nb_salles_bain": int, "etage": int, "age_estime": int})
 
-    fact = (fact
-            .merge(dim_date.rename(columns={"date_publication": "date_publication"})[
-                ["date_id", "date_publication"]], on="date_publication")
-            .merge(sv, on="ville")
-            .merge(sq, on="quartier")
-            .merge(dim_loc, on=["ville_id", "quartier_id"])
-            .merge(st, on="type_bien")
-            .merge(sc, on="annee_construction")
-            .merge(sca, on=["nb_chambres", "nb_salles_bain", "etage"])
-            .merge(dim_bien, on=["type_id", "construction_id", "caracteristique_id"])
-            .merge(dim_tr, on="transaction")
-            .merge(dim_cat.rename(columns={
-                "prix_category":    "categorie_prix",
-                "surface_category": "categorie_surface"}),
-                on=["categorie_prix", "categorie_surface", "luxury"])
-            .merge(dim_anom[["annonce_id", "anomalie_id"]], on="annonce_id"))
+        fact = (fact
+                .merge(dim_date.rename(columns={"date_publication": "date_publication"})[
+                    ["date_id", "date_publication"]], on="date_publication")
+                .merge(sv, on="ville")
+                .merge(sq, on="quartier")
+                .merge(dim_loc, on=["ville_id", "quartier_id"])
+                .merge(st, on="type_bien")
+                .merge(sc, on="annee_construction")
+                .merge(sca, on=["nb_chambres", "nb_salles_bain", "etage"])
+                .merge(dim_bien, on=["type_id", "construction_id", "caracteristique_id"])
+                .merge(dim_tr, on="transaction")
+                .merge(dim_cat.rename(columns={
+                    "prix_category":    "categorie_prix",
+                    "surface_category": "categorie_surface"}),
+                    on=["categorie_prix", "categorie_surface", "luxury"])
+                .merge(dim_anom[["annonce_id", "anomalie_id"]], on="annonce_id"))
 
-    fact_final = fact[["annonce_id", "date_id", "localisation_id", "bien_id",
-                        "transaction_id", "anomalie_id", "prix_category_id",
-                        "prix", "surface", "prix_par_m2"]]
-    _validate_fact_rows(df, fact_final)
-    fact_final.to_sql("fact_annonces", schema="gold", con=engine,
-                      if_exists="append", index=False, chunksize=500)
-    log.info(f"  gold.fact_annonces : {len(fact_final)} rows")
+        fact_final = fact[["annonce_id", "date_id", "localisation_id", "bien_id",
+                            "transaction_id", "anomalie_id", "prix_category_id",
+                            "prix", "surface", "prix_par_m2"]]
+        _validate_fact_rows(df, fact_final)
+        fact_final.to_sql("fact_annonces", schema="gold", con=conn,
+                          if_exists="append", index=False, chunksize=500)
+        log.info(f"  gold.fact_annonces : {len(fact_final)} rows")
 
-    # ── Indexes ───────────────────────────────────────────────
-    with engine.begin() as conn:
+        # ── Indexes ───────────────────────────────────────────────
         for idx_sql in [
-            "CREATE INDEX IF NOT EXISTS idx_fact_date         ON gold.fact_annonces(date_id)",
-            "CREATE INDEX IF NOT EXISTS idx_fact_loc          ON gold.fact_annonces(localisation_id)",
-            "CREATE INDEX IF NOT EXISTS idx_fact_bien         ON gold.fact_annonces(bien_id)",
-            "CREATE INDEX IF NOT EXISTS idx_fact_transaction  ON gold.fact_annonces(transaction_id)",
-            "CREATE INDEX IF NOT EXISTS idx_fact_anomaly      ON gold.fact_annonces(anomalie_id)",
-            "CREATE INDEX IF NOT EXISTS idx_fact_category     ON gold.fact_annonces(prix_category_id)",
-            "CREATE INDEX IF NOT EXISTS idx_subdim_ville      ON gold.subdim_ville(ville)",
+                "CREATE INDEX IF NOT EXISTS idx_fact_date         ON gold.fact_annonces(date_id)",
+                "CREATE INDEX IF NOT EXISTS idx_fact_loc          ON gold.fact_annonces(localisation_id)",
+                "CREATE INDEX IF NOT EXISTS idx_fact_bien         ON gold.fact_annonces(bien_id)",
+                "CREATE INDEX IF NOT EXISTS idx_fact_transaction  ON gold.fact_annonces(transaction_id)",
+                "CREATE INDEX IF NOT EXISTS idx_fact_anomaly      ON gold.fact_annonces(anomalie_id)",
+                "CREATE INDEX IF NOT EXISTS idx_fact_category     ON gold.fact_annonces(prix_category_id)",
+                "CREATE INDEX IF NOT EXISTS idx_subdim_ville      ON gold.subdim_ville(ville)",
         ]:
             conn.execute(text(idx_sql))
-    log.info("Indexes created ✓")
+        log.info("Indexes created ✓")
 
     # ── Export data_warehouse_ready.csv ───────────────────────
     dw_ready = pd.read_sql("""
