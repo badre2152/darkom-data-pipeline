@@ -15,9 +15,7 @@ from src.utils.logger import get_logger
 log = get_logger("clean")
 
 
-# ─────────────────────────────────────────────────────────────
 # HELPERS
-# ─────────────────────────────────────────────────────────────
 def _remove_accents(text_val):
     
     if pd.isna(text_val):
@@ -37,9 +35,7 @@ def _log_nulls(df: pd.DataFrame, step: str):
         log.info(f"[{step}] Remaining nulls:\n{nulls.to_string()}")
 
 
-# ─────────────────────────────────────────────────────────────
 # MAIN
-# ─────────────────────────────────────────────────────────────
 def _replace_silver_table(df: pd.DataFrame, engine) -> None:
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE IF EXISTS silver.annonces_clean CASCADE"))
@@ -129,21 +125,21 @@ def clean_data() -> int:
     log.info("═" * 60)
     log.info(" SILVER LAYER — Starting …")
 
-    # ── 0. Read from bronze.stg_annonces ─────────────────────
+    # 0. Read from bronze.stg_annonces
     engine_bronze = get_engine(SCHEMA_BRONZE)
     df = pd.read_sql("SELECT * FROM bronze.stg_annonces", engine_bronze)
     log.info(f"Read {len(df)} rows from bronze.stg_annonces")
     source_rows = len(df)
 
-    # ── 1. Drop staging metadata column ──────────────────────
+    # 1. Drop staging metadata column
     df.drop(columns=["_loaded_at"], errors="ignore", inplace=True)
 
-    # ── 2. Duplicates (cell 8-9) ──────────────────────────────
+    # 2. Duplicates (cell 8-9)
     before = len(df)
     df.drop_duplicates(keep="first", inplace=True)
     log.info(f"Duplicates removed : {before - len(df)} | Remaining : {len(df)}")
 
-    # ── 3. Fix types (cell 11) ────────────────────────────────
+    # 3. Fix types (cell 11)
     df["date_publication"] = pd.to_datetime(df["date_publication"], errors="coerce")
     for col in ["prix", "surface", "nb_chambres", "nb_salles_bain", "etage", "annee_construction"]:
         df[col] = pd.to_numeric(df[col], errors="coerce")
@@ -153,7 +149,7 @@ def clean_data() -> int:
     df = _remove_missing_publication_dates(df)
 
 
-    # ── 5. Ville — normalize (cells 16-19) ───────────────────
+    # 5. Ville — normalize (cells 16-19)
     df["ville"] = df["ville"].str.lower().str.strip().apply(_remove_accents)
     df["ville"] = df["ville"].replace({
         "casa":        "casablanca",
@@ -175,7 +171,7 @@ def clean_data() -> int:
     df["quartier"] = _normalize_unknown_neighborhoods(df["quartier"])
     log.info("Quartiers marked unknown: %s", int(df["quartier"].eq("unknown").sum()))
 
-    # ── 7. type_bien — lower + deduce from titre (cells 30-33) ─
+    # 7. type_bien — lower + deduce from titre (cells 30-33)
     df["type_bien"] = df["type_bien"].str.lower().str.strip()
     
     types = ["villa", "appartement", "terrain", "duplex", "bureau"]
@@ -204,7 +200,7 @@ def clean_data() -> int:
 
     _log_nulls(df, "After imputation")
 
-    # ── 13. Outlier detection — IQR (cell 76) ────────────────
+    # 13. Outlier detection — IQR (cell 76)
     
     df["prix_outlier"] = False
     for tx_type in df["transaction"].cat.categories:
@@ -228,19 +224,19 @@ def clean_data() -> int:
         )
     log.info("IQR outlier flags computed (prix: per-transaction)")
 
-    # ── 14. Logic anomaly (cell 77) ───────────────────────────
+    # 14. Logic anomaly (cell 77)
     df["logic_anomaly"] = (
         ((df["nb_salles_bain"] == 0) & (df["surface"] > 30)) |
         ((df["nb_chambres"]   == 0) & (df["surface"] > 40))
     )
 
-    # ── 15. Luxury & suspicious (cells 78-79) ─────────────────
+    # 15. Luxury & suspicious (cells 78-79)
     p99 = df["prix"].quantile(0.99)
     df["luxury"]             = df["prix"]    > p99
     df["suspicious_price"]   = df["prix"]    < SUSPICIOUS_PRICE_THRESHOLD
     df["suspicious_surface"] = df["surface"] < SUSPICIOUS_SURFACE_THRESHOLD
 
-    # ── 16. is_anomaly (cell 80) ──────────────────────────────
+    # 16. is_anomaly (cell 80)
     df["is_anomaly"] = (
         df["prix_outlier"]          |
         df["surface_outlier"]       |
@@ -254,7 +250,7 @@ def clean_data() -> int:
     )
     log.info(f"Anomalies : {df['is_anomaly'].sum()} / {len(df)}")
 
-    # ── 17. Feature Engineering (cells 84-95) ─────────────────
+    # 17. Feature Engineering (cells 84-95)
     df["prix_par_m2"] = _calculate_price_per_square_meter(df)
 
     
@@ -288,18 +284,18 @@ def clean_data() -> int:
     )
     log.info("Feature engineering done")
 
-    # ── 18. Category types (cell 96) ──────────────────────────
+    # 18. Category types (cell 96)
     df["ville"]       = df["ville"].astype("category")
     df["quartier"]    = df["quartier"].astype("category")
     df["type_bien"]   = df["type_bien"].astype("category")
     df["transaction"] = df["transaction"].astype("category")
 
-    # ── 19. Save to data/silver/data_clean.csv ────────────────
+    # 19. Save to data/silver/data_clean.csv
     SILVER_CSV.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(SILVER_CSV, index=False)
     log.info(f"Saved → {SILVER_CSV}")
 
-    # ── 20. Load into silver.annonces_clean ───────────────────
+    # 20. Load into silver.annonces_clean
     df_pg = df.copy()
     for col in df_pg.select_dtypes(include="category").columns:
         df_pg[col] = df_pg[col].astype(str)
@@ -312,7 +308,7 @@ def clean_data() -> int:
     log.info("Silver row retention: input=%s output=%s excluded=%s",
              source_rows, len(df_pg), source_rows - len(df_pg))
 
-    # ── 21. Log entry ──────────────────────────────────────────
+    # 21. Log entry
     engine_bronze = get_engine(SCHEMA_BRONZE)
     with engine_bronze.begin() as conn:
         conn.execute(text("""
